@@ -17,6 +17,8 @@ let timelineObserver = null;
 let scrubberDragHandlers = null;
 let timelineScrollTimeout = null;
 let imageCache = new Map(); // Cache for loaded images
+let isNavigating = false; // Prevent rapid navigation
+let lastNavigationTime = 0;
 
 // ============= INITIALIZATION =============
 document.addEventListener('DOMContentLoaded', () => {
@@ -47,8 +49,14 @@ function setupEventListeners() {
     });
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeModal();
-        else if (e.key === 'ArrowLeft') navigateImage(-1);
-        else if (e.key === 'ArrowRight') navigateImage(1);
+        else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            navigateImage(-1);
+        }
+        else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            navigateImage(1);
+        }
     });
     const mediaContainer = document.querySelector('.media-container');
     mediaContainer.addEventListener('touchstart', (e) => touchStartX = e.changedTouches[0].screenX, { passive: true });
@@ -290,9 +298,23 @@ function selectImage(filename, index) {
 
 function navigateImage(direction) {
     if (!currentCamera || currentImages.length === 0 || isStreamMode) return;
+    
+    // Throttle navigation to 100ms minimum
+    const now = Date.now();
+    if (isNavigating || (now - lastNavigationTime) < 100) return;
+    
     const newIndex = currentImageIndex + direction;
     if (newIndex < 0 || newIndex >= currentImages.length) return;
+    
+    isNavigating = true;
+    lastNavigationTime = now;
+    
     selectImage(currentImages[newIndex].filename, newIndex);
+    
+    // Reset navigation lock after minimum delay
+    setTimeout(() => {
+        isNavigating = false;
+    }, 100);
 }
 
 function updateNavigationArrows() {
@@ -368,6 +390,8 @@ function closeModal() {
     currentImages = [];
     isStreamMode = true;
     currentImageIndex = -1;
+    isNavigating = false;
+    lastNavigationTime = 0;
     imageCache.clear(); // Clear image cache when closing modal
     document.getElementById('timeline').innerHTML = '';
     document.getElementById('timeScrubber').classList.remove('visible');
