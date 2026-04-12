@@ -592,8 +592,13 @@ function previewScrolledImage() {
     const timeline = document.getElementById('timeline');
     if (!timeline) return;
     
-    const maxScroll = timeline.scrollWidth - timeline.clientWidth;
-    const scrollPercentage = maxScroll > 0 ? timeline.scrollLeft / maxScroll : 0;
+    // Calculate the center position of the visible viewport
+    const centerPosition = timeline.scrollLeft + (timeline.clientWidth / 2);
+    
+    // Convert to percentage of total scrollable width
+    const scrollPercentage = timeline.scrollWidth > 0 ? centerPosition / timeline.scrollWidth : 0;
+    
+    // Map to image index
     const visibleIndex = Math.round(scrollPercentage * (currentImages.length - 1));
     
     // Only update if we're scrolled to a different image
