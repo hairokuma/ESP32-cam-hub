@@ -5,6 +5,7 @@ Receives and saves images from ESP32 camera
 """
 
 from flask import Flask, request, jsonify, send_file, send_from_directory
+from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
 import os
 from pathlib import Path
@@ -14,7 +15,9 @@ import subprocess
 from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__, static_folder='static', static_url_path='')
+app.config['SECRET_KEY'] = 'esp32-cam-secret-key'
 CORS(app)  # Enable CORS for all routes
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Configuration
 NETWORK_PREFIX = '192.168.2.'  # Adjust to your network
@@ -176,6 +179,15 @@ def upload_image():
         
         print(f"✓ Camera {camera_id} ({camera_ip}): {date_str}/{time_str}.jpg ({len(image_data)} bytes)")
         
+        # Emit WebSocket event for real-time update
+        stats_data = get_stats_data()
+        socketio.emit('stats_update', stats_data, broadcast=True)
+        socketio.emit('camera_update', {
+            'camera_id': camera_id,
+            'image_count': stats_data['cameras'][camera_id]['image_count'],
+            'latest_time': stats_data['cameras'][camera_id]['latest_time']
+        }, broadcast=True)
+        
         return jsonify({
             'status': 'success',
             'camera_id': camera_id,
@@ -231,10 +243,8 @@ def get_latest_image(camera_id=None):
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/stats', methods=['GET'])
-def get_stats():
-    """Get upload statistics"""
-    
+def get_stats_data():
+    """Get upload statistics data (used by both HTTP and WebSocket)"""
     # Get all camera folders
     camera_folders = [d for d in Path(UPLOAD_FOLDER).iterdir() if d.is_dir()]
     
@@ -272,14 +282,19 @@ def get_stats():
             'latest_time': latest_time
         }
     
-    return jsonify({
+    return {
         'total_uploads': upload_stats['total_uploads'],
         'total_images_today': total_images,
         'active_cameras': len(cameras),
         'cameras': cameras,
         'last_upload': upload_stats['last_upload_time'],
         'last_size_bytes': upload_stats['last_image_size']
-    })
+    }
+
+@app.route('/stats', methods=['GET'])
+def get_stats():
+    """Get upload statistics"""
+    return jsonify(get_stats_data())
 
 
 @app.route('/images', methods=['GET'])
@@ -565,6 +580,18 @@ def manual_video_generation(camera_id, date):
         return jsonify({'error': str(e)}), 500
 
 
+@socketio.on('connect')
+def handle_connect():
+    """Handle client connection"""
+    print(f"✓ Client connected")
+    # Send initial stats to newly connected client
+    emit('stats_update', get_stats_data())
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Handle client disconnection"""
+    print(f"✗ Client disconnected")
+
 if __name__ == '__main__':
     print("=" * 50)
     print("ESP32-CAM Multi-Camera Upload Server")
@@ -600,7 +627,7 @@ if __name__ == '__main__':
     print("=" * 50)
     
     try:
-        app.run(host='0.0.0.0', port=5000, debug=True)
+        socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
     except (KeyboardInterrupt, SystemExit):
         scheduler.shutdown()
         print("\n\nServer stopped")

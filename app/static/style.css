@@ -64,14 +64,11 @@ body {
     box-shadow: 0 6px 10px rgba(0,0,0,0.5);
 }
 
-.camera-card:hover .camera-header {
-    opacity: 1;
-}
+
 
 .camera-header {
     background: #3a3a3a;
     padding: 4px 8px;
-    opacity: 0;
     transition: opacity 0.2s;
     display: flex;
     justify-content: space-between;
@@ -203,6 +200,11 @@ body {
     font-size: 10px;
     color: #888;
     background: #252525;
+    transition: background 0.3s;
+}
+
+.camera-status.updated {
+    background: rgba(76, 175, 80, 0.2);
 }
 
 .status-indicator {
@@ -448,7 +450,7 @@ body {
     flex-shrink: 0;
     cursor: pointer;
     border-radius: 6px;
-    overflow: hidden;
+    overflow: visible;
     border: 3px solid transparent;
     transition: all 0.2s ease;
     position: relative;
@@ -460,6 +462,40 @@ body {
     transform: scale(1.05);
     box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
     z-index: 10;
+}
+
+.timeline-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: rgba(76, 175, 80, 0.95);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.timeline-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(76, 175, 80, 0.95);
+}
+
+.timeline-item:hover .timeline-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-12px);
 }
 
 .timeline-item.active {
