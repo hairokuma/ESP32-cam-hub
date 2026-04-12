@@ -64,14 +64,9 @@ body {
     box-shadow: 0 6px 10px rgba(0,0,0,0.5);
 }
 
-.camera-card:hover .camera-header {
-    opacity: 1;
-}
-
 .camera-header {
     background: #3a3a3a;
     padding: 4px 8px;
-    opacity: 0;
     transition: opacity 0.2s;
     display: flex;
     justify-content: space-between;
@@ -568,7 +563,7 @@ body {
     position: absolute;
     bottom: 30px;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translateX(-50%) translateY(4px);
     background: rgba(76, 175, 80, 0.95);
     color: white;
     padding: 8px 14px;
@@ -578,7 +573,7 @@ body {
     white-space: nowrap;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity 0.2s ease, transform 0.2s ease;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     z-index: 100;
 }
@@ -596,6 +591,7 @@ body {
 .time-scrubber.dragging .scrubber-tooltip,
 .scrubber-bar:hover .scrubber-tooltip {
     opacity: 1;
+    transform: translateX(-50%) translateY(0);
 }
 
 .scrubber-labels {

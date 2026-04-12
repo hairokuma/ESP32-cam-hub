@@ -76,6 +76,7 @@ async function loadCameras() {
     try {
         const response = await fetch(`${API_BASE}/stats`);
         const data = await response.json();
+        const previousCameraIds = cameras.map(c => c.id).sort().join(',');
         cameras = Object.keys(data.cameras || {}).map(id => ({
             id: id,
             ip: `${NETWORK_PREFIX}${id}`,
@@ -83,7 +84,14 @@ async function loadCameras() {
             imageCount: data.cameras[id].image_count,
             latestTime: data.cameras[id].latest_time
         }));
+        const currentCameraIds = cameras.map(c => c.id).sort().join(',');
+        
         updateStats(cameras.length, data.last_upload);
+        
+        // Rebuild grid if camera list changed
+        if (previousCameraIds !== currentCameraIds) {
+            updateCameraGrid();
+        }
     } catch (error) {
         console.error('Failed to load cameras:', error);
     }
@@ -92,6 +100,21 @@ async function loadCameras() {
 function updateStats(count, lastUpdate) {
     document.getElementById('cameraCount').textContent = `${count} camera${count !== 1 ? 's' : ''}`;
     document.getElementById('lastUpdate').textContent = `Letzte Aktualisierung: ${lastUpdate || 'Nie'}`;
+    
+    // Update camera-status for each camera if cards already exist
+    cameras.forEach(camera => {
+        const cameraCard = document.querySelector(`[data-camera-id="${camera.id}"]`);
+        if (cameraCard) {
+            const statusElement = cameraCard.querySelector('.camera-status');
+            if (statusElement) {
+                statusElement.innerHTML = `
+                    <span class="status-indicator online"></span>
+                    ${camera.imageCount} images captured
+                    ${camera.latestTime ? '• Last: ' + formatTime(camera.latestTime) : ''}
+                `;
+            }
+        }
+    });
 }
 
 function updateCameraGrid() {
@@ -108,7 +131,7 @@ function updateCameraGrid() {
     }
 
     grid.innerHTML = cameras.map(camera => `
-        <div class="camera-card">
+        <div class="camera-card" data-camera-id="${camera.id}">
             <div class="camera-header">
                 <span class="camera-ip">${camera.ip}</span>
                 <div class="camera-controls">
@@ -142,9 +165,30 @@ function updateCameraGrid() {
     `).join('');
 }
 
+function parseBackendDate(timestamp) {
+    if (typeof timestamp === 'string' && timestamp.includes('.')) {
+        // Parse DD.MM.YYYY HH:MM:SS format from backend
+        const [datePart, timePart] = timestamp.split(' ');
+        const [day, month, year] = datePart.split('.');
+        const [hours, minutes, seconds] = (timePart || '00:00:00').split(':');
+        return new Date(year, month - 1, day, hours, minutes, seconds || 0);
+    }
+    return new Date(timestamp);
+}
+
 function formatTime(timestamp) {
     try {
-        const date = new Date(timestamp);
+        let date;
+        if (typeof timestamp === 'string' && timestamp.includes('.')) {
+            // Parse DD.MM.YYYY HH:MM:SS format from backend
+            const [datePart, timePart] = timestamp.split(' ');
+            const [day, month, year] = datePart.split('.');
+            const [hours, minutes, seconds] = (timePart || '00:00:00').split(':');
+            date = new Date(year, month - 1, day, hours, minutes, seconds || 0);
+        } else {
+            date = new Date(timestamp);
+        }
+        
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
@@ -177,7 +221,9 @@ async function loadCameraImages(cameraId) {
     try {
         const response = await fetch(`${API_BASE}/images/${cameraId}`);
         const data = await response.json();
-        currentImages = (data.images || []).sort((a, b) => new Date(a.modified) - new Date(b.modified));
+        currentImages = (data.images || []).sort((a, b) => 
+            parseBackendDate(a.modified) - parseBackendDate(b.modified)
+        );
         updateTimeline();
     } catch (error) {
         console.error('Failed to load images:', error);
@@ -230,7 +276,17 @@ function updateTimeline() {
 
 function formatImageTime(timestamp) {
     try {
-        const date = new Date(timestamp);
+        let date;
+        if (typeof timestamp === 'string' && timestamp.includes('.')) {
+            // Parse DD.MM.YYYY HH:MM:SS format from backend
+            const [datePart, timePart] = timestamp.split(' ');
+            const [day, month, year] = datePart.split('.');
+            const [hours, minutes, seconds] = (timePart || '00:00:00').split(':');
+            date = new Date(year, month - 1, day, hours, minutes, seconds || 0);
+        } else {
+            date = new Date(timestamp);
+        }
+        
         const now = new Date();
         
         // Check if the date is today
@@ -655,14 +711,14 @@ function updateTimeScrubber() {
     const visibleImage = currentImages[visibleIndex];
     
     if (visibleImage && visibleImage.modified) {
-        const date = new Date(visibleImage.modified);
+        const date = parseBackendDate(visibleImage.modified);
         const formattedTime = formatTimeScrubber(date);
         scrubberTime.textContent = formattedTime;
         if (scrubberTooltip) scrubberTooltip.textContent = formattedTime;
         
         // Update start/end labels
-        const oldestTime = formatTimeScrubber(new Date(currentImages[0].modified));
-        const newestTime = formatTimeScrubber(new Date(currentImages[currentImages.length - 1].modified));
+        const oldestTime = formatTimeScrubber(parseBackendDate(currentImages[0].modified));
+        const newestTime = formatTimeScrubber(parseBackendDate(currentImages[currentImages.length - 1].modified));
         document.getElementById('scrubberStart').textContent = oldestTime;
         document.getElementById('scrubberEnd').textContent = newestTime;
         
