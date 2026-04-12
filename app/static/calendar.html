@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32-CAM Calendar</title>
+    <link rel="stylesheet" href="calendar.css">
+</head>
+<body>
+    <div class="header">
+        <a href="/" class="back-link">← Back to Live View</a>
+        <h1>ESP32-CAM Video Calendar</h1>
+        <div class="camera-selector">
+            <label>Camera:</label>
+            <select id="cameraSelect"></select>
+        </div>
+    </div>
+
+    <div class="calendar-container">
+        <div class="calendar-header">
+            <button id="prevMonth" class="nav-btn">‹</button>
+            <h2 id="currentMonth">April 2026</h2>
+            <button id="nextMonth" class="nav-btn">›</button>
+        </div>
+        
+        <div class="calendar-grid">
+            <div class="day-name">Mo</div>
+            <div class="day-name">Di</div>
+            <div class="day-name">Mi</div>
+            <div class="day-name">Do</div>
+            <div class="day-name">Fr</div>
+            <div class="day-name">Sa</div>
+            <div class="day-name">So</div>
+            
+            <!-- Days will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Video Modal -->
+    <div class="video-modal" id="videoModal">
+        <div class="video-modal-content">
+            <button class="close-btn" id="closeVideo">&times;</button>
+            <h2 id="videoTitle">Video</h2>
+            <div class="video-wrapper">
+                <video id="videoPlayer" controls>
+                    <source id="videoSource" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            <div class="video-info">
+                <span id="videoDate"></span>
+                <span id="videoSize"></span>
+            </div>
+        </div>
+    </div>
+
+    <script src="calendar.js"></script>
+</body>
+</html>
