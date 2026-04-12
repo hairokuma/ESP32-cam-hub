@@ -16,6 +16,7 @@ let touchEndX = 0;
 let timelineObserver = null;
 let scrubberDragHandlers = null;
 let timelineScrollTimeout = null;
+let imageCache = new Map(); // Cache for loaded images
 
 // ============= INITIALIZATION =============
 document.addEventListener('DOMContentLoaded', () => {
@@ -204,8 +205,10 @@ function updateTimeline() {
         const item = document.createElement('div');
         item.className = 'timeline-item';
         item.dataset.index = index;
+        const imageUrl = `${API_BASE}/uploads/${currentCamera.id}/${img.filename}`;
         item.innerHTML = `
-            <img data-src="${API_BASE}/uploads/${currentCamera.id}/${img.filename}" 
+            <img data-src="${imageUrl}" 
+                 data-filename="${img.filename}"
                  alt="${img.filename}" class="lazy-timeline-img">
             <div class="timestamp">${formatImageTime(img.modified)}</div>
         `;
@@ -257,7 +260,19 @@ function selectImage(filename, index) {
     currentImageIndex = index;
     document.getElementById('viewStream').classList.remove('active');
     document.getElementById('viewImage').classList.add('active');
-    document.getElementById('fullscreenStream').src = `${API_BASE}/uploads/${currentCamera.id}/${filename}`;
+    
+    // Use cached image if available
+    const cacheKey = `${currentCamera.id}/${filename}`;
+    const cachedSrc = imageCache.get(cacheKey);
+    const fullscreenImg = document.getElementById('fullscreenStream');
+    
+    if (cachedSrc) {
+        // Image already loaded in timeline, reuse it
+        fullscreenImg.src = cachedSrc;
+    } else {
+        // Fallback: load the image (will happen on direct navigation)
+        fullscreenImg.src = `${API_BASE}/uploads/${currentCamera.id}/${filename}`;
+    }
     
     // Update timeline items efficiently
     const items = document.querySelectorAll('.timeline-item');
@@ -353,6 +368,7 @@ function closeModal() {
     currentImages = [];
     isStreamMode = true;
     currentImageIndex = -1;
+    imageCache.clear(); // Clear image cache when closing modal
     document.getElementById('timeline').innerHTML = '';
     document.getElementById('timeScrubber').classList.remove('visible');
 }
@@ -469,9 +485,17 @@ function initializeLazyLoading() {
             if (entry.isIntersecting) {
                 const img = entry.target;
                 const src = img.getAttribute('data-src');
+                const filename = img.getAttribute('data-filename');
                 if (src && !img.src) {
                     img.src = src;
-                    img.onload = () => img.classList.add('loaded');
+                    img.onload = () => {
+                        img.classList.add('loaded');
+                        // Cache the loaded image
+                        if (filename && currentCamera) {
+                            const cacheKey = `${currentCamera.id}/${filename}`;
+                            imageCache.set(cacheKey, src);
+                        }
+                    };
                 }
             }
         });
@@ -584,7 +608,17 @@ function previewScrolledImage() {
 function selectImageSilent(filename, index) {
     // Update image without scrolling the timeline (to avoid interference with user scrolling)
     currentImageIndex = index;
-    document.getElementById('fullscreenStream').src = `${API_BASE}/uploads/${currentCamera.id}/${filename}`;
+    
+    // Use cached image if available
+    const cacheKey = `${currentCamera.id}/${filename}`;
+    const cachedSrc = imageCache.get(cacheKey);
+    const fullscreenImg = document.getElementById('fullscreenStream');
+    
+    if (cachedSrc) {
+        fullscreenImg.src = cachedSrc;
+    } else {
+        fullscreenImg.src = `${API_BASE}/uploads/${currentCamera.id}/${filename}`;
+    }
     
     // Update timeline items
     const items = document.querySelectorAll('.timeline-item');
