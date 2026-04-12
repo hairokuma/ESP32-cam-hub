@@ -1,5 +1,6 @@
 // ============= CONFIGURATION =============
 const API_BASE = window.location.origin;
+const REFRESH_INTERVAL = 10000;
 const NETWORK_PREFIX = '192.168.2.';
 
 // ============= STATE =============
@@ -18,7 +19,6 @@ let timelineScrollTimeout = null;
 let imageCache = new Map(); // Cache for loaded images
 let isNavigating = false; // Prevent rapid navigation
 let lastNavigationTime = 0;
-let socket = null;
 
 // ============= INITIALIZATION =============
 document.addEventListener('DOMContentLoaded', () => {
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initializeApp() {
     await loadCameras();
     updateCameraGrid();
-    connectWebSocket();
+    setInterval(loadCameras, REFRESH_INTERVAL);
 }
 
 function setupEventListeners() {
@@ -71,72 +71,19 @@ function handleSwipe() {
     }
 }
 
-// ============= WEBSOCKET CONNECTION =============
-function connectWebSocket() {
-    socket = io(API_BASE);
-    
-    socket.on('connect', () => {
-        console.log('✓ WebSocket connected');
-    });
-    
-    socket.on('disconnect', () => {
-        console.log('✗ WebSocket disconnected');
-    });
-    
-    socket.on('stats_update', (data) => {
-        console.log('📊 Stats update received');
-        updateFromStats(data);
-    });
-    
-    socket.on('camera_update', (data) => {
-        console.log(`📷 Camera ${data.camera_id} updated`);
-        updateCameraStats(data.camera_id, data.image_count, data.latest_time);
-    });
-}
-
-function updateFromStats(data) {
-    cameras = Object.keys(data.cameras || {}).map(id => ({
-        id: id,
-        ip: `${NETWORK_PREFIX}${id}`,
-        streamUrl: `http://${NETWORK_PREFIX}${id}/stream`,
-        imageCount: data.cameras[id].image_count,
-        latestTime: data.cameras[id].latest_time
-    }));
-    updateStats(cameras.length, data.last_upload);
-    updateCameraGrid();
-}
-
-function updateCameraStats(cameraId, imageCount, latestTime) {
-    // Update camera in state
-    const camera = cameras.find(c => c.id === cameraId);
-    if (camera) {
-        camera.imageCount = imageCount;
-        camera.latestTime = latestTime;
-    }
-    
-    // Update the specific camera card status without rebuilding the entire grid
-    const statusElement = document.querySelector(`[data-camera-id="${cameraId}"] .camera-status`);
-    if (statusElement) {
-        statusElement.innerHTML = `
-            <span class="status-indicator online"></span>
-            ${imageCount} images captured
-            ${latestTime ? '• Last: ' + formatTime(latestTime) : ''}
-        `;
-        
-        // Add visual feedback
-        statusElement.classList.add('updated');
-        setTimeout(() => {
-            statusElement.classList.remove('updated');
-        }, 1000);
-    }
-}
-
 // ============= DATA LOADING =============
 async function loadCameras() {
     try {
         const response = await fetch(`${API_BASE}/stats`);
         const data = await response.json();
-        updateFromStats(data);
+        cameras = Object.keys(data.cameras || {}).map(id => ({
+            id: id,
+            ip: `${NETWORK_PREFIX}${id}`,
+            streamUrl: `http://${NETWORK_PREFIX}${id}/stream`,
+            imageCount: data.cameras[id].image_count,
+            latestTime: data.cameras[id].latest_time
+        }));
+        updateStats(cameras.length, data.last_upload);
     } catch (error) {
         console.error('Failed to load cameras:', error);
     }
@@ -161,7 +108,7 @@ function updateCameraGrid() {
     }
 
     grid.innerHTML = cameras.map(camera => `
-        <div class="camera-card" data-camera-id="${camera.id}">
+        <div class="camera-card">
             <div class="camera-header">
                 <span class="camera-ip">${camera.ip}</span>
                 <div class="camera-controls">
@@ -197,18 +144,7 @@ function updateCameraGrid() {
 
 function formatTime(timestamp) {
     try {
-        // Handle both "DD.MM.YYYY HH:MM:SS" and ISO date formats
-        let date;
-        if (typeof timestamp === 'string' && timestamp.includes('.')) {
-            // Parse "DD.MM.YYYY HH:MM:SS" format
-            const [datePart, timePart] = timestamp.split(' ');
-            const [day, month, year] = datePart.split('.');
-            const [hours, minutes, seconds] = (timePart || '00:00:00').split(':');
-            date = new Date(year, month - 1, day, hours, minutes, seconds || 0);
-        } else {
-            date = new Date(timestamp);
-        }
-        
+        const date = new Date(timestamp);
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
@@ -270,13 +206,11 @@ function updateTimeline() {
         item.className = 'timeline-item';
         item.dataset.index = index;
         const imageUrl = `${API_BASE}/uploads/${currentCamera.id}/${img.filename}`;
-        const fullTimestamp = formatImageTime(img.modified);
         item.innerHTML = `
             <img data-src="${imageUrl}" 
                  data-filename="${img.filename}"
                  alt="${img.filename}" class="lazy-timeline-img">
-            <div class="timestamp">${fullTimestamp}</div>
-            <div class="timeline-tooltip">${fullTimestamp}</div>
+            <div class="timestamp">${formatImageTime(img.modified)}</div>
         `;
         item.addEventListener('click', () => selectImage(img.filename, index));
         fragment.appendChild(item);
