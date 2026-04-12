@@ -227,13 +227,26 @@ function updateTimeline() {
 function formatImageTime(timestamp) {
     try {
         const date = new Date(timestamp);
-        const d = String(date.getDate()).padStart(2, '0');
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const y = date.getFullYear();
+        const now = new Date();
+        
+        // Check if the date is today
+        const isToday = date.getDate() === now.getDate() &&
+                        date.getMonth() === now.getMonth() &&
+                        date.getFullYear() === now.getFullYear();
+        
         const h = String(date.getHours()).padStart(2, '0');
         const min = String(date.getMinutes()).padStart(2, '0');
         const s = String(date.getSeconds()).padStart(2, '0');
-        return `${d}.${m}.${y} ${h}:${min}:${s}`;
+        
+        // If today, show only time; otherwise show full date and time
+        if (isToday) {
+            return `${h}:${min}:${s}`;
+        } else {
+            const d = String(date.getDate()).padStart(2, '0');
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const y = date.getFullYear();
+            return `${d}.${m}.${y} ${h}:${min}:${s}`;
+        }
     } catch { return timestamp; }
 }
 
