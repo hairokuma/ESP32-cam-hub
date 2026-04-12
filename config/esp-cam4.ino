@@ -2,11 +2,9 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include "esp_http_server.h"
+#include "credentials.h"  // WiFi credentials (not committed to git)
 
 // ============= CONFIGURATION =============
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
-const char* serverUrl = "http://YOUR_SERVER_IP:5000/upload";
 const int uploadInterval = 10000;
 const framesize_t CAMERA_FRAMESIZE = FRAMESIZE_XGA;
 const int CAMERA_QUALITY = 12;
