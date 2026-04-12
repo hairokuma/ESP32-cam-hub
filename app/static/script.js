@@ -37,8 +37,6 @@ function setupEventListeners() {
     document.getElementById('fullscreenModal').addEventListener('click', (e) => {
         if (e.target.id === 'fullscreenModal') closeModal();
     });
-    document.getElementById('viewStream').addEventListener('click', () => switchToStream());
-    document.getElementById('viewImage').addEventListener('click', () => switchToImage());
     document.getElementById('prevImage').addEventListener('click', (e) => {
         e.stopPropagation();
         navigateImage(-1);
@@ -112,24 +110,21 @@ function updateCameraGrid() {
     grid.innerHTML = cameras.map(camera => `
         <div class="camera-card">
             <div class="camera-header">
-                <div class="camera-title-row">
-                    <span class="camera-title">Camera ${camera.id}</span>
-                    <a href="/calendar?camera=${camera.id}" class="calendar-link" title="View Calendar/Videos">
-                        📅
-                    </a>
-                </div>
-                <div class="camera-info">
-                    <span class="camera-ip">${camera.ip}</span>
+                <span class="camera-ip">${camera.ip}</span>
+                <div class="camera-controls">
                     <button class="stream-toggle ${streamStates[camera.id] === false ? 'stopped' : 'playing'}" 
                             onclick="toggleStream('${camera.id}', event)"
                             title="${streamStates[camera.id] === false ? 'Start Stream' : 'Stop Stream'}">
-                        <span class="stream-icon">${streamStates[camera.id] === false ? '▶' : '⏸'}</span>
+                        ${streamStates[camera.id] === false ? '▶' : '⏸'}
                     </button>
                     <button class="led-toggle ${ledStates[camera.id] ? 'on' : ''}" 
-                            onclick="toggleLED('${camera.id}', event)">
-                        <span class="led-icon"></span>
-                        <span>${ledStates[camera.id] ? 'ON' : 'OFF'}</span>
+                            onclick="toggleLED('${camera.id}', event)"
+                            title="${ledStates[camera.id] ? 'LED ON' : 'LED OFF'}">
+                        💡
                     </button>
+                    <a href="/calendar?camera=${camera.id}" class="calendar-link" title="View Calendar/Videos">
+                        📅
+                    </a>
                 </div>
             </div>
             <img class="camera-stream" 
@@ -173,9 +168,6 @@ async function openCamera(cameraId) {
 
     await loadCameraImages(cameraId);
     isStreamMode = true;
-    document.getElementById('viewStream').classList.add('active');
-    document.getElementById('viewImage').classList.remove('active');
-    document.getElementById('modalCameraTitle').textContent = `Camera ${cameraId} (${currentCamera.ip})`;
     document.getElementById('fullscreenStream').src = currentCamera.streamUrl;
     document.getElementById('fullscreenModal').classList.add('active');
     document.body.style.overflow = 'hidden';
@@ -266,8 +258,6 @@ function formatImageTime(timestamp) {
 function selectImage(filename, index) {
     isStreamMode = false;
     currentImageIndex = index;
-    document.getElementById('viewStream').classList.remove('active');
-    document.getElementById('viewImage').classList.add('active');
     
     // Use cached image if available
     const cacheKey = `${currentCamera.id}/${filename}`;
@@ -327,22 +317,6 @@ function updateNavigationArrows() {
         prevBtn.classList.toggle('hidden', currentImageIndex <= 0);
         nextBtn.classList.toggle('hidden', currentImageIndex >= currentImages.length - 1);
     }
-}
-
-function switchToStream() {
-    if (isStreamMode || !currentCamera) return;
-    isStreamMode = true;
-    currentImageIndex = -1;
-    document.getElementById('viewStream').classList.add('active');
-    document.getElementById('viewImage').classList.remove('active');
-    document.getElementById('fullscreenStream').src = currentCamera.streamUrl;
-    document.querySelectorAll('.timeline-item').forEach(item => item.classList.remove('active'));
-    updateNavigationArrows();
-}
-
-function switchToImage() {
-    if (!isStreamMode || currentImages.length === 0) return;
-    selectImage(currentImages[currentImages.length - 1].filename, currentImages.length - 1);
 }
 
 function closeModal() {
@@ -430,7 +404,6 @@ async function toggleLED(cameraId, event) {
         button.classList.remove('loading');
         button.disabled = false;
         if (ledStates[cameraId]) button.classList.add('on'); else button.classList.remove('on');
-        button.querySelector('span:last-child').textContent = ledStates[cameraId] ? 'ON' : 'OFF';
     } catch (error) {
         console.error(`Error controlling LED for camera ${cameraId}:`, error);
         const streamImg = event.target.closest('.camera-card').querySelector('.camera-stream');
@@ -479,7 +452,7 @@ async function toggleStream(cameraId, event) {
             button.classList.remove('stopped');
             button.classList.add('playing');
             button.title = 'Stop Stream';
-            button.querySelector('.stream-icon').textContent = '⏸';
+            button.textContent = '⏸';
         } else {
             streamStates[cameraId] = false;
             await stopStream(streamImg);
@@ -487,7 +460,7 @@ async function toggleStream(cameraId, event) {
             button.classList.remove('playing');
             button.classList.add('stopped');
             button.title = 'Start Stream';
-            button.querySelector('.stream-icon').textContent = '▶';
+            button.textContent = '▶';
         }
     } catch (error) {
         console.error(`Error toggling stream for camera ${cameraId}:`, error);
