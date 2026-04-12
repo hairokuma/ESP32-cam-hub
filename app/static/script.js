@@ -15,6 +15,7 @@ let touchStartX = 0;
 let touchEndX = 0;
 let timelineObserver = null;
 let scrubberDragHandlers = null;
+let timelineScrollTimeout = null;
 
 // ============= INITIALIZATION =============
 document.addEventListener('DOMContentLoaded', () => {
@@ -317,9 +318,14 @@ function closeModal() {
         timelineObserver = null;
     }
     
-    // Cleanup scrubber
+    // Cleanup scrubber and scroll timeout
+    if (timelineScrollTimeout) {
+        clearTimeout(timelineScrollTimeout);
+        timelineScrollTimeout = null;
+    }
+    
     const timeline = document.getElementById('timeline');
-    if (timeline) timeline.removeEventListener('scroll', updateTimeScrubber);
+    if (timeline) timeline.removeEventListener('scroll', handleTimelineScroll);
     
     if (scrubberDragHandlers) {
         const track = document.getElementById('scrubberTrack');
@@ -492,8 +498,8 @@ function initializeTimeScrubber() {
         document.removeEventListener('touchend', scrubberDragHandlers.endDrag);
     }
 
-    timeline.removeEventListener('scroll', updateTimeScrubber);
-    timeline.addEventListener('scroll', updateTimeScrubber, { passive: true });
+    timeline.removeEventListener('scroll', handleTimelineScroll);
+    timeline.addEventListener('scroll', handleTimelineScroll, { passive: true });
     
     let isDragging = false;
     let animationFrame = null;
@@ -543,6 +549,54 @@ function initializeTimeScrubber() {
     document.addEventListener('touchend', endDrag);
     
     updateTimeScrubber();
+}
+
+function handleTimelineScroll() {
+    updateTimeScrubber();
+    
+    // Debounce the preview update
+    if (timelineScrollTimeout) clearTimeout(timelineScrollTimeout);
+    
+    timelineScrollTimeout = setTimeout(() => {
+        previewScrolledImage();
+    }, 150);
+}
+
+function previewScrolledImage() {
+    if (isStreamMode || currentImages.length === 0 || !currentCamera) return;
+    
+    const timeline = document.getElementById('timeline');
+    if (!timeline) return;
+    
+    const maxScroll = timeline.scrollWidth - timeline.clientWidth;
+    const scrollPercentage = maxScroll > 0 ? timeline.scrollLeft / maxScroll : 0;
+    const visibleIndex = Math.round(scrollPercentage * (currentImages.length - 1));
+    
+    // Only update if we're scrolled to a different image
+    if (visibleIndex !== currentImageIndex && visibleIndex >= 0 && visibleIndex < currentImages.length) {
+        const visibleImage = currentImages[visibleIndex];
+        if (visibleImage) {
+            selectImageSilent(visibleImage.filename, visibleIndex);
+        }
+    }
+}
+
+function selectImageSilent(filename, index) {
+    // Update image without scrolling the timeline (to avoid interference with user scrolling)
+    currentImageIndex = index;
+    document.getElementById('fullscreenStream').src = `${API_BASE}/uploads/${currentCamera.id}/${filename}`;
+    
+    // Update timeline items
+    const items = document.querySelectorAll('.timeline-item');
+    items.forEach((item, idx) => {
+        if (idx === index) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+    
+    updateNavigationArrows();
 }
 
 function updateTimeScrubber() {
