@@ -50,7 +50,7 @@ function setupEventListeners() {
     container.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     // Scroll event to update active image - call directly without throttling
-    container.addEventListener('scroll', updateActiveImageFast, { passive: true });
+    container.addEventListener('scroll', updateActiveImage, { passive: true });
 }
 
 // ============= IMAGE LOADING =============
@@ -180,14 +180,13 @@ function setupLazyLoading() {
 
 // ============= ACTIVE IMAGE DETECTION =============
 function updateActiveImage() {
-    const container = document.getElementById('slideshowContainer');
     const items = document.querySelectorAll('.carousel-item');
     
     if (items.length === 0) return;
 
-    const containerRect = container.getBoundingClientRect();
-    const centerX = containerRect.left + containerRect.width / 2;
-    const centerY = containerRect.top + containerRect.height / 2;
+    // Get screen center
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
 
     let closestItem = null;
     let closestDistance = Infinity;
@@ -198,7 +197,7 @@ function updateActiveImage() {
         const itemCenterX = rect.left + rect.width / 2;
         const itemCenterY = rect.top + rect.height / 2;
 
-        // Calculate distance from container center
+        // Calculate distance from screen center
         const distance = Math.sqrt(
             Math.pow(itemCenterX - centerX, 2) + 
             Math.pow(itemCenterY - centerY, 2)
@@ -211,76 +210,13 @@ function updateActiveImage() {
         }
     });
 
-    // Only update if the active item changed
-    if (closestIndex !== currentIndex || !closestItem.classList.contains('active')) {
-        // Remove active class from all items
+    // Update active item
+    if (closestItem) {
         items.forEach(item => item.classList.remove('active'));
-        
-        // Add active class to closest
-        if (closestItem) {
-            closestItem.classList.add('active');
-            currentIndex = closestIndex;
-            updateInfo();
-            
-            // Preload images around current position
-            preloadNearbyImages(closestIndex);
-        }
-    }
-}
-
-// Cache DOM elements for better performance
-let cachedContainer = null;
-let cachedItems = null;
-
-updateActiveImageFast = () => {
-    // Use cached elements to avoid repeated queries
-    if (!cachedContainer) cachedContainer = document.getElementById('slideshowContainer');
-    if (!cachedItems) cachedItems = document.querySelectorAll('.carousel-item');
-    
-    const items = cachedItems;
-    if (items.length === 0) return;
-
-    const containerRect = cachedContainer.getBoundingClientRect();
-    const centerX = containerRect.left + containerRect.width / 2;
-    const centerY = containerRect.top + containerRect.height / 2;
-
-    let closestIndex = 0;
-    let closestDistance = Infinity;
-
-    // Fast loop - only calculate what we need
-    for (let i = 0; i < items.length; i++) {
-        const rect = items[i].getBoundingClientRect();
-        const itemCenterX = rect.left + rect.width / 2;
-        const itemCenterY = rect.top + rect.height / 2;
-
-        // Use simpler distance calculation (Manhattan distance is faster than Euclidean)
-        const distance = Math.abs(itemCenterX - centerX) + Math.abs(itemCenterY - centerY);
-
-        if (distance < closestDistance) {
-            closestDistance = distance;
-            closestIndex = i;
-        }
-    }
-
-    // Always update, even if same index (ensures active state is set during continuous scroll)
-    if (closestIndex !== currentIndex) {
-        // Fast class manipulation - only touch what changed
-        if (items[currentIndex]) {
-            items[currentIndex].classList.remove('active');
-        }
-        items[closestIndex].classList.add('active');
-        
+        closestItem.classList.add('active');
         currentIndex = closestIndex;
-        
-        // Update info immediately
         updateInfo();
-        
-        // Preload in next frame to avoid blocking scroll
-        requestAnimationFrame(() => preloadNearbyImages(closestIndex));
-    } else if (!items[closestIndex].classList.contains('active')) {
-        // Ensure active class is applied even if index didn't change
-        items.forEach(item => item.classList.remove('active'));
-        items[closestIndex].classList.add('active');
+        preloadNearbyImages(closestIndex);
     }
 }
 
