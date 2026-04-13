@@ -90,6 +90,8 @@ body {
     /* Add padding at start and end so first/last images can be centered */
     padding-left: calc(50vw - 25vw);
     padding-right: calc(50vw - 25vw);
+    position: relative;
+    z-index: 1;
 }
 
 /* Carousel Item */
@@ -101,7 +103,7 @@ body {
     scroll-snap-align: center;
     scroll-snap-stop: always;
     transition: opacity 0.15s ease-out, transform 0.15s ease-out;
-    opacity: 0.25;
+    opacity: 0.3;
     transform: scale(0.65);
     width: 50vw;
     max-width: 700px;
@@ -118,20 +120,27 @@ body {
     box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
     transition: box-shadow 0.15s ease-out, max-height 0.15s ease-out;
     cursor: pointer;
-    filter: blur(1px);
+    filter: blur(2px);
 }
 
-/* Center/Active Item */
+/* Center/Active Item - Fixed in Center */
 .carousel-item.active {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1) !important;
     opacity: 1;
-    transform: scale(1);
-    z-index: 10;
+    z-index: 15;
+    transition: none;
+    pointer-events: none;
 }
 
 .carousel-item.active img {
-    box-shadow: 0 15px 80px rgba(0, 0, 0, 0.9);
+    box-shadow: 0 20px 100px rgba(0, 0, 0, 0.95);
     max-height: 85vh;
+    max-width: 90vw;
     filter: blur(0);
+    transition: none;
 }
 
 /* Loading state for lazy images */
@@ -148,7 +157,7 @@ body {
 
 /* Navigation Buttons */
 .nav-btn {
-    position: absolute;
+    position: fixed;
     top: 50%;
     transform: translateY(-50%);
     background: rgba(255, 255, 255, 0.1);
@@ -159,7 +168,7 @@ body {
     height: 60px;
     border-radius: 50%;
     cursor: pointer;
-    z-index: 20;
+    z-index: 25;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -290,8 +299,16 @@ body {
         transition: box-shadow 0.15s ease-out, max-height 0.15s ease-out;
     }
 
+    .carousel-item.active {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(1) !important;
+    }
+
     .carousel-item.active img {
-        max-height: 70vh;
+        max-height: 75vh;
+        max-width: 95vw;
     }
 
     /* Hide navigation buttons on mobile (use swipe) */
