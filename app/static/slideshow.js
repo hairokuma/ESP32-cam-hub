@@ -51,13 +51,25 @@ function setupEventListeners() {
 
     // Scroll event to update active image - use both scroll and animation frame
     let ticking = false;
+    let lastScrollTime = 0;
+    
     container.addEventListener('scroll', () => {
-        if (!ticking) {
-            window.requestAnimationFrame(() => {
+        const now = Date.now();
+        const timeSinceLastScroll = now - lastScrollTime;
+        
+        // For fast scrolling, update immediately without throttling
+        if (timeSinceLastScroll < 50 || !ticking) {
+            if (!ticking) {
+                window.requestAnimationFrame(() => {
+                    updateActiveImage();
+                    ticking = false;
+                });
+                ticking = true;
+            } else {
+                // During fast scroll, update directly
                 updateActiveImage();
-                ticking = false;
-            });
-            ticking = true;
+            }
+            lastScrollTime = now;
         }
     }, { passive: true });
 }

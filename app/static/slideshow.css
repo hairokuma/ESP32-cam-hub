@@ -89,7 +89,7 @@ body {
     align-items: center;
     justify-content: center;
     scroll-snap-align: center;
-    /* transition: opacity 0.2s ease-out, transform 0.2s ease-out; */
+    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
     opacity: 0.4;
     transform: scale(0.7);
     width: 50vw;
@@ -105,7 +105,7 @@ body {
     object-fit: contain;
     border-radius: 12px;
     box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
-    /* transition: box-shadow 0.2s ease-out, max-height 0.2s ease-out; */
+    transition: box-shadow 0.2s ease-out, max-height 0.2s ease-out;
     cursor: pointer;
 }
 
@@ -265,12 +265,12 @@ body {
     .carousel-item {
         width: 90vw;
         scroll-snap-align: center;
-        /* transition: opacity 0.15s ease-out, transform 0.15s ease-out; */
+        transition: opacity 0.15s ease-out, transform 0.15s ease-out;
     }
 
     .carousel-item img {
         max-height: 60vh;
-        /* transition: box-shadow 0.15s ease-out, max-height 0.15s ease-out; */
+        transition: box-shadow 0.15s ease-out, max-height 0.15s ease-out;
     }
 
     .carousel-item.active img {
