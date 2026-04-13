@@ -49,8 +49,17 @@ function setupEventListeners() {
     container.addEventListener('touchstart', handleTouchStart, { passive: true });
     container.addEventListener('touchend', handleTouchEnd, { passive: true });
 
-    // Scroll event to update active image
-    container.addEventListener('scroll', updateActiveImage, { passive: true });
+    // Scroll event to update active image - use both scroll and animation frame
+    let ticking = false;
+    container.addEventListener('scroll', () => {
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                updateActiveImage();
+                ticking = false;
+            });
+            ticking = true;
+        }
+    }, { passive: true });
 }
 
 // ============= IMAGE LOADING =============
@@ -103,8 +112,8 @@ function renderCarousel() {
 
         const img = document.createElement('img');
         
-        // Lazy load all images except first few
-        if (index < 3) {
+        // Preload first 10 images for faster initial scrolling
+        if (index < 10) {
             img.src = image.url;
         } else {
             img.dataset.src = image.url;
@@ -138,7 +147,7 @@ function setupLazyLoading() {
             }
         });
     }, {
-        rootMargin: '200px' // Start loading before image is visible
+        rootMargin: '500px' // Start loading well before image is visible
     });
 
     images.forEach(img => observer.observe(img));
@@ -157,6 +166,7 @@ function updateActiveImage() {
 
     let closestItem = null;
     let closestDistance = Infinity;
+    let closestIndex = 0;
 
     items.forEach((item, index) => {
         const rect = item.getBoundingClientRect();
@@ -172,17 +182,21 @@ function updateActiveImage() {
         if (distance < closestDistance) {
             closestDistance = distance;
             closestItem = item;
-            currentIndex = index;
+            closestIndex = index;
         }
-
-        // Remove active class from all
-        item.classList.remove('active');
     });
 
-    // Add active class to closest
-    if (closestItem) {
-        closestItem.classList.add('active');
-        updateInfo();
+    // Only update if the active item changed
+    if (closestIndex !== currentIndex || !closestItem.classList.contains('active')) {
+        // Remove active class from all items
+        items.forEach(item => item.classList.remove('active'));
+        
+        // Add active class to closest
+        if (closestItem) {
+            closestItem.classList.add('active');
+            currentIndex = closestIndex;
+            updateInfo();
+        }
     }
 }
 

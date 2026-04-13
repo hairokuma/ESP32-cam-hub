@@ -89,12 +89,13 @@ body {
     align-items: center;
     justify-content: center;
     scroll-snap-align: center;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
     opacity: 0.4;
     transform: scale(0.7);
     width: 50vw;
     max-width: 600px;
     height: auto;
+    will-change: transform, opacity;
 }
 
 .carousel-item img {
@@ -104,7 +105,7 @@ body {
     object-fit: contain;
     border-radius: 12px;
     box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: box-shadow 0.2s ease-out, max-height 0.2s ease-out;
     cursor: pointer;
 }
 
@@ -117,7 +118,6 @@ body {
 
 .carousel-item.active img {
     box-shadow: 0 10px 60px rgba(0, 0, 0, 0.8);
-    width: 100%;
     max-height: 80vh;
 }
 
@@ -265,10 +265,12 @@ body {
     .carousel-item {
         width: 90vw;
         scroll-snap-align: center;
+        transition: opacity 0.15s ease-out, transform 0.15s ease-out;
     }
 
     .carousel-item img {
         max-height: 60vh;
+        transition: box-shadow 0.15s ease-out, max-height 0.15s ease-out;
     }
 
     .carousel-item.active img {
