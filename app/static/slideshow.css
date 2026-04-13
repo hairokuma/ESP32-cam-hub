@@ -71,15 +71,25 @@ body {
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
+    /* Hide scrollbar for cleaner look */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.slideshow-container::-webkit-scrollbar {
+    display: none;
 }
 
 /* Carousel Track */
 .carousel-track {
     display: flex;
     height: 100%;
-    gap: 20px;
+    gap: 30px;
     padding: 20px;
     align-items: center;
+    /* Add padding at start and end so first/last images can be centered */
+    padding-left: calc(50vw - 25vw);
+    padding-right: calc(50vw - 25vw);
 }
 
 /* Carousel Item */
@@ -89,11 +99,12 @@ body {
     align-items: center;
     justify-content: center;
     scroll-snap-align: center;
-    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
-    opacity: 0.4;
-    transform: scale(0.7);
+    scroll-snap-stop: always;
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+    opacity: 0.25;
+    transform: scale(0.65);
     width: 50vw;
-    max-width: 600px;
+    max-width: 700px;
     height: auto;
     will-change: transform, opacity;
 }
@@ -101,12 +112,13 @@ body {
 .carousel-item img {
     width: 100%;
     height: auto;
-    max-height: 70vh;
+    max-height: 65vh;
     object-fit: contain;
     border-radius: 12px;
     box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
-    transition: box-shadow 0.2s ease-out, max-height 0.2s ease-out;
+    transition: box-shadow 0.15s ease-out, max-height 0.15s ease-out;
     cursor: pointer;
+    filter: blur(1px);
 }
 
 /* Center/Active Item */
@@ -117,8 +129,9 @@ body {
 }
 
 .carousel-item.active img {
-    box-shadow: 0 10px 60px rgba(0, 0, 0, 0.8);
-    max-height: 80vh;
+    box-shadow: 0 15px 80px rgba(0, 0, 0, 0.9);
+    max-height: 85vh;
+    filter: blur(0);
 }
 
 /* Loading state for lazy images */
@@ -258,18 +271,22 @@ body {
     .carousel-track {
         flex-direction: column;
         width: 100%;
-        gap: 15px;
+        gap: 20px;
         padding: 15px 10px;
+        /* Add padding at start and end for mobile */
+        padding-top: calc(50vh - 30vh);
+        padding-bottom: calc(50vh - 30vh);
     }
 
     .carousel-item {
         width: 90vw;
         scroll-snap-align: center;
+        scroll-snap-stop: always;
         transition: opacity 0.15s ease-out, transform 0.15s ease-out;
     }
 
     .carousel-item img {
-        max-height: 60vh;
+        max-height: 55vh;
         transition: box-shadow 0.15s ease-out, max-height 0.15s ease-out;
     }
 

@@ -101,9 +101,18 @@ async function loadImages() {
         setupLazyLoading();
         showLoading(false);
 
-        // Scroll to first image after render
+        // Scroll to first image after render - ensure it's centered
         setTimeout(() => {
-            scrollToImage(0);
+            const firstItem = document.querySelector('.carousel-item');
+            if (firstItem) {
+                firstItem.scrollIntoView({ 
+                    behavior: 'instant',
+                    block: 'center',
+                    inline: 'center'
+                });
+                firstItem.classList.add('active');
+                updateInfo();
+            }
         }, 100);
 
     } catch (error) {
@@ -260,6 +269,14 @@ function scrollToImage(index) {
             inline: 'center'
         });
         currentIndex = index;
+        
+        // Force update active state immediately
+        setTimeout(() => {
+            items.forEach(item => item.classList.remove('active'));
+            items[index].classList.add('active');
+            updateInfo();
+            preloadNearbyImages(index);
+        }, 50);
     }
 }
 
