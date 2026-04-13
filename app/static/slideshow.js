@@ -7,8 +7,7 @@ let currentIndex = 0;
 let cameraId = null;
 let touchStartX = 0;
 let touchStartY = 0;
-let touchEndX = 0;
-let touchEndY = 0;
+let observer = null;
 
 // ============= INITIALIZATION =============
 document.addEventListener('DOMContentLoaded', () => {
@@ -46,16 +45,12 @@ function setupEventListeners() {
     });
 
     // Touch/swipe support
-    const carousel = document.getElementById('carousel');
-    carousel.addEventListener('touchstart', handleTouchStart, { passive: true });
-    carousel.addEventListener('touchend', handleTouchEnd, { passive: true });
+    const container = document.getElementById('slideshowContainer');
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
 
-    // Mouse wheel navigation 
-    carousel.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        if (e.deltaY > 0) navigate(1);
-        else if (e.deltaY < 0) navigate(-1);
-    }, { passive: false });
+    // Scroll event to update active image
+    container.addEventListener('scroll', updateActiveImage, { passive: true });
 }
 
 // ============= IMAGE LOADING =============
@@ -81,9 +76,14 @@ async function loadImages() {
             return dateB - dateA;
         });
 
-        currentIndex = 0;
-        updateCarousel();
+        renderCarousel();
+        setupLazyLoading();
         showLoading(false);
+
+        // Scroll to first image after render
+        setTimeout(() => {
+            scrollToImage(0);
+        }, 100);
 
     } catch (error) {
         console.error('Error loading images:', error);
@@ -91,35 +91,99 @@ async function loadImages() {
     }
 }
 
-// ============= CAROUSEL MANAGEMENT =============
-function updateCarousel() {
-    if (images.length === 0) return;
+// ============= CAROUSEL RENDERING =============
+function renderCarousel() {
+    const track = document.getElementById('carouselTrack');
+    track.innerHTML = '';
 
-    // Calculate indices
-    const prevIndex = (currentIndex - 1 + images.length) % images.length;
-    const nextIndex = (currentIndex + 1) % images.length;
+    images.forEach((image, index) => {
+        const item = document.createElement('div');
+        item.className = 'carousel-item';
+        item.dataset.index = index;
 
-    // Get carousel items
-    const prevSlide = document.getElementById('prevSlide');
-    const currentSlide = document.getElementById('currentSlide');
-    const nextSlide = document.getElementById('nextSlide');
+        const img = document.createElement('img');
+        
+        // Lazy load all images except first few
+        if (index < 3) {
+            img.src = image.url;
+        } else {
+            img.dataset.src = image.url;
+            img.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E';
+        }
+        
+        img.alt = `Image ${index + 1}`;
+        img.dataset.timestamp = image.timestamp;
+        
+        // Click to view fullscreen or navigate
+        img.addEventListener('click', () => scrollToImage(index));
 
-    // Update images
-    const prevImg = prevSlide.querySelector('img');
-    const currentImg = currentSlide.querySelector('img');
-    const nextImg = nextSlide.querySelector('img');
+        item.appendChild(img);
+        track.appendChild(item);
+    });
 
-    prevImg.src = images[prevIndex].url;
-    prevImg.alt = `Image ${prevIndex + 1}`;
+    updateActiveImage();
+}
+
+// ============= LAZY LOADING =============
+function setupLazyLoading() {
+    const images = document.querySelectorAll('img[data-src]');
     
-    currentImg.src = images[currentIndex].url;
-    currentImg.alt = `Image ${currentIndex + 1}`;
-    
-    nextImg.src = images[nextIndex].url;
-    nextImg.alt = `Image ${nextIndex + 1}`;
+    observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                img.src = img.dataset.src;
+                img.removeAttribute('data-src');
+                observer.unobserve(img);
+            }
+        });
+    }, {
+        rootMargin: '200px' // Start loading before image is visible
+    });
 
-    // Update counter and timestamp
-    updateInfo();
+    images.forEach(img => observer.observe(img));
+}
+
+// ============= ACTIVE IMAGE DETECTION =============
+function updateActiveImage() {
+    const container = document.getElementById('slideshowContainer');
+    const items = document.querySelectorAll('.carousel-item');
+    
+    if (items.length === 0) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const centerX = containerRect.left + containerRect.width / 2;
+    const centerY = containerRect.top + containerRect.height / 2;
+
+    let closestItem = null;
+    let closestDistance = Infinity;
+
+    items.forEach((item, index) => {
+        const rect = item.getBoundingClientRect();
+        const itemCenterX = rect.left + rect.width / 2;
+        const itemCenterY = rect.top + rect.height / 2;
+
+        // Calculate distance from container center
+        const distance = Math.sqrt(
+            Math.pow(itemCenterX - centerX, 2) + 
+            Math.pow(itemCenterY - centerY, 2)
+        );
+
+        if (distance < closestDistance) {
+            closestDistance = distance;
+            closestItem = item;
+            currentIndex = index;
+        }
+
+        // Remove active class from all
+        item.classList.remove('active');
+    });
+
+    // Add active class to closest
+    if (closestItem) {
+        closestItem.classList.add('active');
+        updateInfo();
+    }
 }
 
 function updateInfo() {
@@ -138,11 +202,20 @@ function updateInfo() {
 function navigate(direction) {
     if (images.length === 0) return;
 
-    // Update index
-    currentIndex = (currentIndex + direction + images.length) % images.length;
-    
-    // Update carousel
-    updateCarousel();
+    const newIndex = Math.max(0, Math.min(images.length - 1, currentIndex + direction));
+    scrollToImage(newIndex);
+}
+
+function scrollToImage(index) {
+    const items = document.querySelectorAll('.carousel-item');
+    if (items[index]) {
+        items[index].scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'center'
+        });
+        currentIndex = index;
+    }
 }
 
 // ============= TOUCH HANDLERS =============
@@ -152,30 +225,8 @@ function handleTouchStart(e) {
 }
 
 function handleTouchEnd(e) {
-    touchEndX = e.changedTouches[0].clientX;
-    touchEndY = e.changedTouches[0].clientY;
-    handleSwipe();
-}
-
-function handleSwipe() {
-    const deltaX = touchEndX - touchStartX;
-    const deltaY = touchEndY - touchStartY;
-    const minSwipeDistance = 50;
-
-    // Horizontal swipe (desktop-like behavior)
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        if (Math.abs(deltaX) > minSwipeDistance) {
-            if (deltaX > 0) navigate(-1); // Swipe right = previous
-            else navigate(1); // Swipe left = next
-        }
-    } 
-    // Vertical swipe (mobile)
-    else {
-        if (Math.abs(deltaY) > minSwipeDistance) {
-            if (deltaY > 0) navigate(-1); // Swipe down = previous
-            else navigate(1); // Swipe up = next
-        }
-    }
+    // Touch events already handled by scroll-snap
+    // This is just for future custom gestures if needed
 }
 
 // ============= UI HELPERS =============

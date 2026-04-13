@@ -66,76 +66,71 @@ body {
     position: relative;
     width: 100%;
     height: calc(100vh - 70px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    perspective: 1500px;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
 }
 
-/* Carousel */
-.carousel {
-    position: relative;
-    width: 100%;
+/* Carousel Track */
+.carousel-track {
+    display: flex;
     height: 100%;
+    gap: 20px;
+    padding: 20px;
+    align-items: center;
+}
+
+/* Carousel Item */
+.carousel-item {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    transform-style: preserve-3d;
-}
-
-.carousel-item {
-    position: absolute;
-    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    transform-style: preserve-3d;
-    backface-visibility: hidden;
+    scroll-snap-align: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0.4;
+    transform: scale(0.7);
+    width: 50vw;
+    max-width: 600px;
+    height: auto;
 }
 
 .carousel-item img {
-    display: block;
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: auto;
+    max-height: 70vh;
     object-fit: contain;
     border-radius: 12px;
-    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
 }
 
-/* Current (Center) Slide */
-.carousel-item.current {
-    transform: translateX(0) translateZ(0) scale(1);
-    z-index: 10;
+/* Center/Active Item */
+.carousel-item.active {
     opacity: 1;
+    transform: scale(1);
+    z-index: 10;
 }
 
-.carousel-item.current img {
-    max-width: 85vw;
-    max-height: 75vh;
+.carousel-item.active img {
+    box-shadow: 0 10px 60px rgba(0, 0, 0, 0.8);
+    width: 100%;
+    max-height: 80vh;
 }
 
-/* Previous (Left) Slide */
-.carousel-item.prev {
-    transform: translateX(-45%) translateZ(-250px) scale(0.7);
-    z-index: 5;
-    opacity: 0.6;
-    filter: brightness(0.7);
+/* Loading state for lazy images */
+.carousel-item img[data-src] {
+    background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
 }
 
-.carousel-item.prev img {
-    max-width: 60vw;
-    max-height: 50vh;
-}
-
-/* Next (Right) Slide */
-.carousel-item.next {
-    transform: translateX(45%) translateZ(-250px) scale(0.7);
-    z-index: 5;
-    opacity: 0.6;
-    filter: brightness(0.7);
-}
-
-.carousel-item.next img {
-    max-width: 60vw;
-    max-height: 50vh;
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
 }
 
 /* Navigation Buttons */
@@ -253,44 +248,36 @@ body {
         padding: 4px 8px;
     }
 
-    /* Change to vertical layout on mobile */
-    .carousel-item.current img {
-        max-width: 90vw;
+    /* Vertical scrolling on mobile */
+    .slideshow-container {
+        overflow-x: hidden;
+        overflow-y: auto;
+        scroll-snap-type: y mandatory;
+    }
+
+    .carousel-track {
+        flex-direction: column;
+        width: 100%;
+        gap: 15px;
+        padding: 15px 10px;
+    }
+
+    .carousel-item {
+        width: 90vw;
+        scroll-snap-align: center;
+    }
+
+    .carousel-item img {
         max-height: 60vh;
     }
 
-    /* Previous (Top) */
-    .carousel-item.prev {
-        transform: translateX(0) translateY(-40%) translateZ(-200px) scale(0.6);
+    .carousel-item.active img {
+        max-height: 70vh;
     }
 
-    .carousel-item.prev img {
-        max-width: 70vw;
-        max-height: 40vh;
-    }
-
-    /* Next (Bottom) */
-    .carousel-item.next {
-        transform: translateX(0) translateY(40%) translateZ(-200px) scale(0.6);
-    }
-
-    .carousel-item.next img {
-        max-width: 70vw;
-        max-height: 40vh;
-    }
-
-    /* Navigation buttons on sides still */
+    /* Hide navigation buttons on mobile (use swipe) */
     .nav-btn {
-        width: 50px;
-        height: 50px;
-    }
-
-    .nav-btn-left {
-        left: 15px;
-    }
-
-    .nav-btn-right {
-        right: 15px;
+        display: none;
     }
 }
 
