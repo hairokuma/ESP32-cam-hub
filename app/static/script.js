@@ -145,6 +145,9 @@ function updateCameraGrid() {
                             title="${ledStates[camera.id] ? 'LED ON' : 'LED OFF'}">
                         💡
                     </button>
+                    <a href="/slideshow?camera=${camera.id}" class="slideshow-link" title="View Slideshow">
+                        🏜️
+                    </a>
                     <a href="/calendar?camera=${camera.id}" class="calendar-link" title="View Calendar/Videos">
                         📅
                     </a>

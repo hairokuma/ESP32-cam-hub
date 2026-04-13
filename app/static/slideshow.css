@@ -1,0 +1,323 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+    color: #fff;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+/* Header */
+.header {
+    background: rgba(45, 45, 45, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 15px 20px;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.back-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    color: #fff;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.back-arrow:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateX(-3px);
+}
+
+.header h1 {
+    font-size: 22px;
+    flex: 1;
+}
+
+.stats {
+    display: flex;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.stats span {
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+}
+
+/* Slideshow Container */
+.slideshow-container {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - 70px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    perspective: 1500px;
+    overflow: hidden;
+}
+
+/* Carousel */
+.carousel {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform-style: preserve-3d;
+}
+
+.carousel-item {
+    position: absolute;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+}
+
+.carousel-item img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.7);
+}
+
+/* Current (Center) Slide */
+.carousel-item.current {
+    transform: translateX(0) translateZ(0) scale(1);
+    z-index: 10;
+    opacity: 1;
+}
+
+.carousel-item.current img {
+    max-width: 85vw;
+    max-height: 75vh;
+}
+
+/* Previous (Left) Slide */
+.carousel-item.prev {
+    transform: translateX(-45%) translateZ(-250px) scale(0.7);
+    z-index: 5;
+    opacity: 0.6;
+    filter: brightness(0.7);
+}
+
+.carousel-item.prev img {
+    max-width: 60vw;
+    max-height: 50vh;
+}
+
+/* Next (Right) Slide */
+.carousel-item.next {
+    transform: translateX(45%) translateZ(-250px) scale(0.7);
+    z-index: 5;
+    opacity: 0.6;
+    filter: brightness(0.7);
+}
+
+.carousel-item.next img {
+    max-width: 60vw;
+    max-height: 50vh;
+}
+
+/* Navigation Buttons */
+.nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.nav-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.nav-btn:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.nav-btn-left {
+    left: 30px;
+}
+
+.nav-btn-right {
+    right: 30px;
+}
+
+/* Loading State */
+.loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 50;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading p {
+    font-size: 16px;
+    color: #aaa;
+}
+
+/* No Images State */
+.no-images {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 50;
+}
+
+.no-images p {
+    font-size: 18px;
+    color: #aaa;
+    margin-bottom: 20px;
+}
+
+.btn-back {
+    display: inline-block;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.btn-back:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Mobile Styles - Vertical Layout */
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 18px;
+    }
+    
+    .stats {
+        flex-direction: column;
+        gap: 5px;
+        font-size: 12px;
+    }
+    
+    .stats span {
+        padding: 4px 8px;
+    }
+
+    /* Change to vertical layout on mobile */
+    .carousel-item.current img {
+        max-width: 90vw;
+        max-height: 60vh;
+    }
+
+    /* Previous (Top) */
+    .carousel-item.prev {
+        transform: translateX(0) translateY(-40%) translateZ(-200px) scale(0.6);
+    }
+
+    .carousel-item.prev img {
+        max-width: 70vw;
+        max-height: 40vh;
+    }
+
+    /* Next (Bottom) */
+    .carousel-item.next {
+        transform: translateX(0) translateY(40%) translateZ(-200px) scale(0.6);
+    }
+
+    .carousel-item.next img {
+        max-width: 70vw;
+        max-height: 40vh;
+    }
+
+    /* Navigation buttons on sides still */
+    .nav-btn {
+        width: 50px;
+        height: 50px;
+    }
+
+    .nav-btn-left {
+        left: 15px;
+    }
+
+    .nav-btn-right {
+        right: 15px;
+    }
+}
+
+/* Touch swipe feedback */
+@media (hover: none) and (pointer: coarse) {
+    .carousel-item {
+        transition: all 0.4s ease-out;
+    }
+}
+
+/* Keyboard navigation hint */
+.keyboard-hint {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: #aaa;
+    opacity: 0;
+    animation: fadeInOut 3s ease-in-out;
+    pointer-events: none;
+}
+
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0; }
+    10%, 90% { opacity: 1; }
+}

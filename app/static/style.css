@@ -95,6 +95,22 @@ body {
     transform: scale(1.1);
 }
 
+.slideshow-link {
+    font-size: 16px;
+    text-decoration: none;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: all 0.2s;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.slideshow-link:hover {
+    background: #4a4a4a;
+    transform: scale(1.1);
+}
+
 .camera-ip {
     font-size: 11px;
     color: #aaa;

@@ -201,6 +201,16 @@ def serve_upload(camera_id, filename):
         return jsonify({'error': str(e)}), 404
 
 
+@app.route('/uploads/<camera_id>/images/<date>/<filename>', methods=['GET'])
+def serve_dated_upload(camera_id, date, filename):
+    """Serve uploaded images from a specific date folder"""
+    try:
+        date_folder = os.path.join(UPLOAD_FOLDER, camera_id, 'images', date)
+        return send_from_directory(date_folder, filename)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 404
+
+
 @app.route('/latest', methods=['GET'])
 @app.route('/latest/<camera_id>', methods=['GET'])
 def get_latest_image(camera_id=None):
@@ -505,6 +515,55 @@ def control_quality(camera_id):
 def calendar_page():
     """Serve the calendar page"""
     return send_from_directory('static', 'calendar.html')
+
+
+@app.route('/slideshow')
+def slideshow_page():
+    """Serve the slideshow page"""
+    return send_from_directory('static', 'slideshow.html')
+
+
+@app.route('/api/images', methods=['GET'])
+def get_all_images():
+    """Get all images for a specific camera (for slideshow)"""
+    camera_id = request.args.get('camera_id')
+    
+    if not camera_id:
+        return jsonify({'error': 'camera_id parameter is required'}), 400
+    
+    try:
+        images_base = os.path.join(UPLOAD_FOLDER, camera_id, 'images')
+        
+        if not os.path.exists(images_base):
+            return jsonify({'camera_id': camera_id, 'count': 0, 'images': []})
+        
+        all_images = []
+        
+        # Iterate through all date folders
+        for date_folder in sorted(Path(images_base).iterdir(), reverse=True):
+            if not date_folder.is_dir():
+                continue
+            
+            # Get all images in this date folder
+            for image_file in sorted(date_folder.glob('*.jpg')):
+                stat = image_file.stat()
+                timestamp_str = datetime.fromtimestamp(stat.st_mtime).strftime('%d.%m.%Y %H:%M:%S')
+                
+                all_images.append({
+                    'filename': image_file.name,
+                    'url': f'/uploads/{camera_id}/images/{date_folder.name}/{image_file.name}',
+                    'timestamp': timestamp_str,
+                    'size': stat.st_size
+                })
+        
+        return jsonify({
+            'camera_id': camera_id,
+            'count': len(all_images),
+            'images': all_images
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/calendar/<camera_id>', methods=['GET'])
