@@ -53,24 +53,29 @@ function setupEventListeners() {
     let ticking = false;
     let lastScrollTime = 0;
     
-    container.addEventListener('scroll', () => {
-        const now = Date.now();
-        const timeSinceLastScroll = now - lastScrollTime;
+    // old version way to slow to update active image during fast scroll
+    // container.addEventListener('scroll', () => {
+    //     const now = Date.now();
+    //     const timeSinceLastScroll = now - lastScrollTime;
         
-        // For fast scrolling, update immediately without throttling
-        if (timeSinceLastScroll < 50 || !ticking) {
-            if (!ticking) {
-                window.requestAnimationFrame(() => {
-                    updateActiveImage();
-                    ticking = false;
-                });
-                ticking = true;
-            } else {
-                // During fast scroll, update directly
-                updateActiveImage();
-            }
-            lastScrollTime = now;
-        }
+    //     if (timeSinceLastScroll < 50 || !ticking) {
+    //         if (!ticking) {
+    //             window.requestAnimationFrame(() => {
+    //                 updateActiveImage();
+    //                 ticking = false;
+    //             });
+    //             ticking = true;
+    //         } else {
+    //             // During fast scroll, update directly
+    //             updateActiveImage();
+    //         }
+    //         lastScrollTime = now;
+    //     }
+    // }, { passive: true });
+
+    // New version - update active image on every scroll for more responsive experience
+    container.addEventListener('scroll', () => {
+        updateActiveImageFast();
     }, { passive: true });
 }
 
@@ -148,10 +153,32 @@ function renderCarousel() {
         img.addEventListener('click', () => scrollToImage(index));
 
         item.appendChild(img);
+        
+        // Add time overlay from filename (format: HH-MM-SS.jpg)
+        const timeOverlay = document.createElement('div');
+        timeOverlay.className = 'time-overlay';
+        const timeFromFilename = extractTimeFromFilename(image.filename);
+        if (timeFromFilename) {
+            timeOverlay.textContent = timeFromFilename;
+        }
+        item.appendChild(timeOverlay);
+        
         track.appendChild(item);
     });
 
     updateActiveImage();
+}
+
+// Extract time from filename (e.g., "22-38-45.jpg" -> "22:38:45")
+function extractTimeFromFilename(filename) {
+    if (!filename) return null;
+    
+    // Match pattern like 22-38-45 in filename
+    const match = filename.match(/(\d{2})-(\d{2})-(\d{2})/);
+    if (match) {
+        return `${match[1]}:${match[2]}:${match[3]}`;
+    }
+    return null;
 }
 
 // ============= LAZY LOADING =============
@@ -221,6 +248,51 @@ function updateActiveImage() {
             // Preload images around current position
             preloadNearbyImages(closestIndex);
         }
+    }
+}
+
+updateActiveImageFast = () => {
+    const container = document.getElementById('slideshowContainer');
+    const items = document.querySelectorAll('.carousel-item');
+    
+    if (items.length === 0) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const centerX = containerRect.left + containerRect.width / 2;
+    const centerY = containerRect.top + containerRect.height / 2;
+
+    let closestIndex = 0;
+    let closestDistance = Infinity;
+
+    // Fast loop - only calculate what we need
+    for (let i = 0; i < items.length; i++) {
+        const rect = items[i].getBoundingClientRect();
+        const itemCenterX = rect.left + rect.width / 2;
+        const itemCenterY = rect.top + rect.height / 2;
+
+        // Use simpler distance calculation (Manhattan distance is faster than Euclidean)
+        const distance = Math.abs(itemCenterX - centerX) + Math.abs(itemCenterY - centerY);
+
+        if (distance < closestDistance) {
+            closestDistance = distance;
+            closestIndex = i;
+        }
+    }
+
+    // Only update if index changed
+    if (closestIndex !== currentIndex) {
+        // Fast class manipulation - only touch what changed
+        if (items[currentIndex]) {
+            items[currentIndex].classList.remove('active');
+        }
+        items[closestIndex].classList.add('active');
+        currentIndex = closestIndex;
+        
+        // Update info immediately
+        updateInfo();
+        
+        // Preload in next frame to avoid blocking scroll
+        requestAnimationFrame(() => preloadNearbyImages(closestIndex));
     }
 }
 

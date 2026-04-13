@@ -109,6 +109,7 @@ body {
     max-width: 700px;
     height: auto;
     will-change: transform, opacity;
+    position: relative;
 }
 
 .carousel-item img {
@@ -121,6 +122,24 @@ body {
     transition: box-shadow 0.15s ease-out, max-height 0.15s ease-out;
     cursor: pointer;
     filter: blur(2px);
+}
+
+/* Time Overlay */
+.time-overlay {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(5px);
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    opacity: 0.8;
+    pointer-events: none;
+    z-index: 5;
 }
 
 /* Center/Active Item - Fixed in Center */
@@ -141,6 +160,13 @@ body {
     max-width: 90vw;
     filter: blur(0);
     transition: none;
+}
+
+.carousel-item.active .time-overlay {
+    opacity: 0.9;
+    font-size: 13px;
+    bottom: 15px;
+    right: 15px;
 }
 
 /* Loading state for lazy images */
