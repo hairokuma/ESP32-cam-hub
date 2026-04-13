@@ -147,7 +147,7 @@ function setupLazyLoading() {
             }
         });
     }, {
-        rootMargin: '500px' // Start loading well before image is visible
+        rootMargin: '2000px' // Start loading very early for smooth scrolling
     });
 
     images.forEach(img => observer.observe(img));
