@@ -49,34 +49,8 @@ function setupEventListeners() {
     container.addEventListener('touchstart', handleTouchStart, { passive: true });
     container.addEventListener('touchend', handleTouchEnd, { passive: true });
 
-    // Scroll event to update active image - use both scroll and animation frame
-    let ticking = false;
-    let lastScrollTime = 0;
-    
-    // old version way to slow to update active image during fast scroll
-    // container.addEventListener('scroll', () => {
-    //     const now = Date.now();
-    //     const timeSinceLastScroll = now - lastScrollTime;
-        
-    //     if (timeSinceLastScroll < 50 || !ticking) {
-    //         if (!ticking) {
-    //             window.requestAnimationFrame(() => {
-    //                 updateActiveImage();
-    //                 ticking = false;
-    //             });
-    //             ticking = true;
-    //         } else {
-    //             // During fast scroll, update directly
-    //             updateActiveImage();
-    //         }
-    //         lastScrollTime = now;
-    //     }
-    // }, { passive: true });
-
-    // New version - update active image on every scroll for more responsive experience
-    container.addEventListener('scroll', () => {
-        updateActiveImageFast();
-    }, { passive: true });
+    // Scroll event to update active image - call directly without throttling
+    container.addEventListener('scroll', updateActiveImageFast, { passive: true });
 }
 
 // ============= IMAGE LOADING =============
@@ -167,6 +141,9 @@ function renderCarousel() {
     });
 
     updateActiveImage();
+    
+    // Reset cached items after rendering
+    cachedItems = document.querySelectorAll('.carousel-item');
 }
 
 // Extract time from filename (e.g., "22-38-45.jpg" -> "22:38:45")
@@ -251,13 +228,19 @@ function updateActiveImage() {
     }
 }
 
+// Cache DOM elements for better performance
+let cachedContainer = null;
+let cachedItems = null;
+
 updateActiveImageFast = () => {
-    const container = document.getElementById('slideshowContainer');
-    const items = document.querySelectorAll('.carousel-item');
+    // Use cached elements to avoid repeated queries
+    if (!cachedContainer) cachedContainer = document.getElementById('slideshowContainer');
+    if (!cachedItems) cachedItems = document.querySelectorAll('.carousel-item');
     
+    const items = cachedItems;
     if (items.length === 0) return;
 
-    const containerRect = container.getBoundingClientRect();
+    const containerRect = cachedContainer.getBoundingClientRect();
     const centerX = containerRect.left + containerRect.width / 2;
     const centerY = containerRect.top + containerRect.height / 2;
 
@@ -279,13 +262,14 @@ updateActiveImageFast = () => {
         }
     }
 
-    // Only update if index changed
+    // Always update, even if same index (ensures active state is set during continuous scroll)
     if (closestIndex !== currentIndex) {
         // Fast class manipulation - only touch what changed
         if (items[currentIndex]) {
             items[currentIndex].classList.remove('active');
         }
         items[closestIndex].classList.add('active');
+        
         currentIndex = closestIndex;
         
         // Update info immediately
@@ -293,6 +277,10 @@ updateActiveImageFast = () => {
         
         // Preload in next frame to avoid blocking scroll
         requestAnimationFrame(() => preloadNearbyImages(closestIndex));
+    } else if (!items[closestIndex].classList.contains('active')) {
+        // Ensure active class is applied even if index didn't change
+        items.forEach(item => item.classList.remove('active'));
+        items[closestIndex].classList.add('active');
     }
 }
 

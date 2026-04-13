@@ -101,8 +101,8 @@ body {
     align-items: center;
     justify-content: center;
     scroll-snap-align: center;
-    scroll-snap-stop: always;
-    transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+    scroll-snap-stop: normal;
+    transition: none;
     opacity: 0.3;
     transform: scale(0.65);
     width: 50vw;
