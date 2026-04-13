@@ -112,8 +112,8 @@ function renderCarousel() {
 
         const img = document.createElement('img');
         
-        // Preload first 10 images for faster initial scrolling
-        if (index < 10) {
+        // Preload first 40 images for smooth scrolling experience
+        if (index < 40) {
             img.src = image.url;
         } else {
             img.dataset.src = image.url;
@@ -196,6 +196,25 @@ function updateActiveImage() {
             closestItem.classList.add('active');
             currentIndex = closestIndex;
             updateInfo();
+            
+            // Preload images around current position
+            preloadNearbyImages(closestIndex);
+        }
+    }
+}
+
+// Preload images around the current position
+function preloadNearbyImages(centerIndex) {
+    const items = document.querySelectorAll('.carousel-item');
+    const preloadRange = 30; // Load 30 images ahead
+    
+    // Load images from current to current + 30
+    for (let i = centerIndex; i < Math.min(centerIndex + preloadRange, items.length); i++) {
+        const img = items[i].querySelector('img[data-src]');
+        if (img && img.dataset.src) {
+            img.src = img.dataset.src;
+            img.removeAttribute('data-src');
+            if (observer) observer.unobserve(img);
         }
     }
 }
