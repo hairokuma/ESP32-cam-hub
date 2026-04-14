@@ -377,7 +377,7 @@ body {
     background: #2d2d2d;
     border-radius: 8px;
     padding: 15px;
-    max-height: 200px;
+    max-height: 260px;
     display: flex;
     flex-direction: column;
 }
