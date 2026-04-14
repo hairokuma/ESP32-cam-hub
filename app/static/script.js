@@ -231,9 +231,6 @@ async function loadCameraImages(cameraId) {
 
 function updateTimeline() {
     const timeline = document.getElementById('timeline');
-    const imageCount = document.getElementById('imageCount');
-    imageCount.textContent = `${currentImages.length} image${currentImages.length !== 1 ? 's' : ''}`;
-
     if (currentImages.length === 0) {
         timeline.innerHTML = '<p style="color: #888; padding: 20px; text-align: center;">No captured images available</p>';
         updateNavigationArrows();
@@ -693,7 +690,6 @@ function updateTimeScrubber() {
     const scrubber = document.getElementById('timeScrubber');
     const scrubberTime = document.getElementById('scrubberTime');
     const scrubberBar = document.getElementById('scrubberBar');
-    const scrubberTooltip = document.getElementById('scrubberTooltip');
     
     if (!timeline || !scrubber || !scrubberTime || !scrubberBar || currentImages.length === 0) return;
 
@@ -711,7 +707,6 @@ function updateTimeScrubber() {
         const date = parseBackendDate(visibleImage.modified);
         const formattedTime = formatTimeScrubber(date);
         scrubberTime.textContent = formattedTime;
-        if (scrubberTooltip) scrubberTooltip.textContent = formattedTime;
         
         // Update start/end labels
         const oldestTime = formatTimeScrubber(parseBackendDate(currentImages[0].modified));

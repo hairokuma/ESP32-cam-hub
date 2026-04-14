@@ -382,21 +382,6 @@ body {
     flex-direction: column;
 }
 
-.timeline-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.timeline-header h3 {
-    font-size: 16px;
-}
-
-.timeline-header span {
-    font-size: 12px;
-    color: #888;
-}
 
 .timeline {
     display: flex;
@@ -477,7 +462,6 @@ body {
 
 /* Time Scrubber */
 .time-scrubber {
-    margin-bottom: 10px;
     padding: 10px 0;
     opacity: 0;
     transition: opacity 0.3s;
@@ -499,11 +483,6 @@ body {
     position: relative;
     margin-bottom: 8px;
     cursor: pointer;
-    transition: height 0.2s;
-}
-
-.scrubber-track:hover {
-    height: 8px;
 }
 
 .scrubber-bar {
