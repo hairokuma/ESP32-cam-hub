@@ -13,74 +13,73 @@ body {
 
 
 .container {
-    padding: 10px;
+    padding: 1rem;
     max-width: 1600px;
     margin: 0 auto;
-}
-
-/* Grid Layout (Desktop) */
-.container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(756px, 1fr));
-    gap: 10px;
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .container {
+        grid-template-columns: 1fr;
+    }
 }
 
 .camera-card {
     background: #2d2d2d;
-    border-radius: 4px;
+    border-radius: .5rem;
     overflow: hidden;
+    position: relative;
 }
-.camera-card span {
-    font-size: 12px;
+
+.camera-card span,
+.camera-card a {
+    font-size: 1rem;
     color: #aaa;
+    text-decoration: none;
 }
-.camera-stream {
-    width: 100%;
-    aspect-ratio: 4/3;
-    object-fit: cover;
-    background: #000;
-    cursor: pointer;
-}
-.camera-header,.camera-status {
-    padding: 4px 8px;
+.camera-header,
+.camera-status {
+    padding: .5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
+
 .camera-controls {
     display: flex;
     align-items: center;
     gap: 4px;
 }
-.status-indicator {
-    width: 10px;
-    height: 10px;
+
+.camera-stream {
+    width: 100%;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    background: #00000082;
+    cursor: pointer;
+    position: relative;
+}
+
+.stream-overlay {
+    position: absolute;
+    inset: 0;
+    margin: 2rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.status-indicator{
+    width: 1rem;
+    height: 1rem;
     border-radius: 50%;
     background: red;
 }
+
 .status-indicator.online {
     background: green;
-}
-
-.loading-shimmer {
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    /* The "Glass" effect */
-    background-image: linear-gradient(90deg,
-            rgba(255, 255, 255, 0) 0%,
-            rgba(255, 255, 255, 0.4) 50%,
-            rgba(255, 255, 255, 0) 100%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-    border-radius: 8px;
-}
-
-@keyframes shimmer {
-    0% {
-        background-position: -200% 0;
-    }
-
-    100% {
-        background-position: 200% 0;
-    }
 }
