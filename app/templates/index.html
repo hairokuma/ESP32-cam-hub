@@ -15,7 +15,7 @@
       <div class="camera-header">
         <span class="camera-ip">{{ camera.ip }}</span>
         <div class="camera-controls">
-          <a href="/camera/{{ camera.id }}/led" title="Toggle LED">
+          <a href="javascript:void(0);" onclick="toggleLED({{camera.id, event}})" title="Toggle LED">
             💡
           </a>
           <a href="/calendar?camera={{ camera.id }}" title="View Calendar/Videos">
@@ -23,15 +23,40 @@
           </a>
         </div>
       </div>
-      <img src="{{camera.streamUrl}}" alt="Camera Stream" class="camera-stream">
+      <img src="{{camera.streamUrl}}" data-stream-url="{{camera.streamUrl}}" alt="Camera Stream" class="camera-stream">
       <div class="camera-status">
         <span class="status-indicator {{ 'online' if camera.online else 'offline' }}"></span>
         {{ camera.imageCount }} images captured
-        {{ camera.latestTime ? '• Last: ' + formatTime(camera.latestTime) : '' }}
+        {{ camera.latestTime}}
       </div>
     </div>
     {% endfor %}
   </div>
+  <script>
+    async function toggleLED(cameraId, event) {
+      if (event) event.stopPropagation();
+      const streamImg = event.target.closest('.camera-card').querySelector('.camera-stream');
+      streamImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='; // 1x1 transparent pixel
+      streamImg.classList.add('loading-shimmer');
+
+
+
+      fetch(`/toggle_led?camera=${cameraId}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            alert(`LED toggled for camera ${cameraId}`);
+          } else {
+            alert(`Failed to toggle LED for camera ${cameraId}`);
+          }
+        })
+        .catch(error => {
+          console.error('Error toggling LED:', error);
+          alert('Error toggling LED');
+        });
+    }
+
+  </script>
 </body>
 
 </html>
