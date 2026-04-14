@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32-CAM Multi-Camera View</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="container" id="cameraGrid">
+    {% for camera in cameras %}
+    <div class="camera-card" data-camera-id="{{ camera.id }}">
+      <div class="camera-header">
+        <span class="camera-ip">{{ camera.ip }}</span>
+        <div class="camera-controls">
+          <a href="/camera/{{ camera.id }}/led" title="Toggle LED">
+            💡
+          </a>
+          <a href="/calendar?camera={{ camera.id }}" title="View Calendar/Videos">
+            📅
+          </a>
+        </div>
+      </div>
+      <img src="{{camera.streamUrl}}" alt="Camera Stream" class="camera-stream">
+      <div class="camera-status">
+        <span class="status-indicator {{ 'online' if camera.online else 'offline' }}"></span>
+        {{ camera.imageCount }} images captured
+        {{ camera.latestTime ? '• Last: ' + formatTime(camera.latestTime) : '' }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</body>
+
+</html>

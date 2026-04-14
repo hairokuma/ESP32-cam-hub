@@ -4,7 +4,7 @@ ESP32-CAM Image Upload Server
 Receives and saves images from ESP32 camera
 """
 
-from flask import Flask, request, jsonify, send_file, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from datetime import datetime, timedelta
 import os
 from pathlib import Path
@@ -233,6 +233,9 @@ def get_latest_image(camera_id=None):
 
 @app.route('/stats', methods=['GET'])
 def get_stats():
+    return get_camera_stats()
+
+def get_camera_stats():
     """Get upload statistics"""
     
     # Get all camera folders
@@ -281,6 +284,34 @@ def get_stats():
         'last_size_bytes': upload_stats['last_image_size']
     })
 
+def get_cameras():
+    """Get list of active cameras based on upload folders"""
+    camera_folders = [d for d in Path(UPLOAD_FOLDER).iterdir() if d.is_dir()]
+    
+    cameras = []
+    for camera_folder in camera_folders:
+        camera_id = camera_folder.name
+        today = datetime.now().strftime('%Y-%m-%d')
+        today_folder = camera_folder / 'images' / today
+        image_count = len(list(today_folder.glob('*.jpg'))) if today_folder.exists() else 0
+        files = sorted(
+            today_folder.glob('*.jpg'),
+            key=lambda x: x.stat().st_mtime,
+            reverse=True
+        )
+        latest_time = datetime.fromtimestamp(files[0].stat().st_mtime).strftime('%d.%m.%Y %H:%M:%S') if files else None
+        cameras.append(
+            {
+                "id": camera_id,
+                "ip": f"{NETWORK_PREFIX}{camera_id}",
+                "imageCount": image_count,
+                "latestTime": latest_time,
+                "streamUrl": f"http://{NETWORK_PREFIX}{camera_id}/stream",
+                "online": latest_time is not None and (datetime.now() - datetime.strptime(latest_time, '%d.%m.%Y %H:%M:%S')).total_seconds() < 300 # Consider online if last upload was within 5 minutes
+            }
+        )
+    
+    return cameras
 
 @app.route('/images', methods=['GET'])
 @app.route('/images/<camera_id>', methods=['GET'])
@@ -367,7 +398,8 @@ def list_images(camera_id=None):
 @app.route('/', methods=['GET'])
 def index():
     """Serve the main frontend"""
-    return send_from_directory('static', 'index.html')
+    
+    return render_template('index.html', cameras=get_cameras())
 
 
 @app.route('/dashboard', methods=['GET'])
