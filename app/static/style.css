@@ -29,28 +29,37 @@ body {
     background: #2d2d2d;
     border-radius: 4px;
     overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    transition: transform 0.2s, box-shadow 0.2s;
 }
-
-.camera-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.5);
+.camera-card span {
+    font-size: 12px;
+    color: #aaa;
 }
-
-.camera-header {
-    background: #3a3a3a;
+.camera-stream {
+    width: 100%;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    background: #000;
+    cursor: pointer;
+}
+.camera-header,.camera-status {
     padding: 4px 8px;
-    transition: opacity 0.2s;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
-
 .camera-controls {
     display: flex;
     align-items: center;
     gap: 4px;
+}
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: red;
+}
+.status-indicator.online {
+    background: green;
 }
 
 .loading-shimmer {

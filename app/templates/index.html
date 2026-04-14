@@ -13,9 +13,9 @@
     {% for camera in cameras %}
     <div class="camera-card" data-camera-id="{{ camera.id }}">
       <div class="camera-header">
-        <span class="camera-ip">{{ camera.ip }}</span>
+        <span>{{ camera.ip }}</span>
         <div class="camera-controls">
-          <a href="javascript:void(0);" onclick="toggleLED({{camera.id, event}})" title="Toggle LED">
+          <a href="javascript:void(0);" onclick="toggleLED('{{camera.id}}', event)" title="Toggle LED">
             💡
           </a>
           <a href="/calendar?camera={{ camera.id }}" title="View Calendar/Videos">
@@ -26,8 +26,9 @@
       <img src="{{camera.streamUrl}}" data-stream-url="{{camera.streamUrl}}" alt="Camera Stream" class="camera-stream">
       <div class="camera-status">
         <span class="status-indicator {{ 'online' if camera.online else 'offline' }}"></span>
-        {{ camera.imageCount }} images captured
-        {{ camera.latestTime}}
+        <span>
+          {{ camera.imageCount }} images captured {{ camera.latestTime}}
+        </span>
       </div>
     </div>
     {% endfor %}
@@ -38,18 +39,13 @@
       const streamImg = event.target.closest('.camera-card').querySelector('.camera-stream');
       streamImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='; // 1x1 transparent pixel
       streamImg.classList.add('loading-shimmer');
-      await fetch(`/toggle_led?camera=${cameraId}`)
+      await fetch(`/camera/${cameraId}/led`, { method: 'GET' })
         .then(response => response.json())
         .then(data => {
-          if (data.success) {
-            alert(`LED toggled for camera ${cameraId}`);
-          } else {
-            alert(`Failed to toggle LED for camera ${cameraId}`);
-          }
+          event.target.textContent = data.led == 'on' ? '💡' : '💡';
         })
         .catch(error => {
           console.error('Error toggling LED:', error);
-          alert('Error toggling LED');
         });
       streamImg.classList.remove('loading-shimmer');
       streamImg.src = streamImg.dataset.streamUrl; // Restore original stream URL
