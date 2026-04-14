@@ -38,10 +38,7 @@
       const streamImg = event.target.closest('.camera-card').querySelector('.camera-stream');
       streamImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='; // 1x1 transparent pixel
       streamImg.classList.add('loading-shimmer');
-
-
-
-      fetch(`/toggle_led?camera=${cameraId}`)
+      await fetch(`/toggle_led?camera=${cameraId}`)
         .then(response => response.json())
         .then(data => {
           if (data.success) {
@@ -54,6 +51,8 @@
           console.error('Error toggling LED:', error);
           alert('Error toggling LED');
         });
+      streamImg.classList.remove('loading-shimmer');
+      streamImg.src = streamImg.dataset.streamUrl; // Restore original stream URL
     }
 
   </script>
