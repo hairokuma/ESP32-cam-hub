@@ -98,9 +98,6 @@ async function loadCameras() {
 }
 
 function updateStats(count, lastUpdate) {
-    document.getElementById('cameraCount').textContent = `${count} camera${count !== 1 ? 's' : ''}`;
-    document.getElementById('lastUpdate').textContent = `Letzte Aktualisierung: ${lastUpdate || 'Nie'}`;
-    
     // Update camera-status for each camera if cards already exist
     cameras.forEach(camera => {
         const cameraCard = document.querySelector(`[data-camera-id="${camera.id}"]`);

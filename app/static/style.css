@@ -11,33 +11,6 @@ body {
     min-height: 100vh;
 }
 
-.header {
-    background: #2d2d2d;
-    padding: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.header h1 {
-    font-size: 24px;
-    margin-bottom: 5px;
-}
-
-.stats {
-    display: flex;
-    gap: 10px;
-    font-size: 14px;
-    color: #aaa;
-}
-
-.stats span {
-    padding: 3px 6px;
-    background: #3a3a3a;
-    border-radius: 4px;
-}
-
 .container {
     padding: 10px;
     max-width: 1600px;
@@ -47,7 +20,7 @@ body {
 /* Grid Layout (Desktop) */
 .container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(756px, 1fr));
     gap: 10px;
 }
 
