@@ -23,6 +23,13 @@
     </button>
   </div>
   <div class="timeline-container">
+    <div class="batch-container">
+      {% for batch in batches %}
+      <a href="{{batch.url}}" class="batch-item">
+        {{ batch.name }}
+      </a>
+      {% endfor %}
+    </div>
     <div class="time-scrubber" id="timeScrubber">
       <div class="scrubber-track" id="scrubberTrack">
         <div class="scrubber-bar" id="scrubberBar">

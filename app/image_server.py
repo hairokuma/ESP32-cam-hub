@@ -298,7 +298,8 @@ def index():
 
 
 @app.route('/timeline/<camera_id>', methods=['GET'])
-def timeline(camera_id=None):
+@app.route('/timeline/<camera_id>/<int:batch>', methods=['GET'])
+def timeline(camera_id=None, batch=None):
     """Serve the timeline frontend"""
     try:
         today = datetime.now().strftime('%Y-%m-%d')
@@ -315,22 +316,60 @@ def timeline(camera_id=None):
             reverse=False
         )
         
-        image_list = []
+        # Build full image list
+        all_images = []
         for f in files:
             stat = f.stat()
-            image_list.append({
+            all_images.append({
                 'src': f'/uploads/{camera_id}/{f.name}',
                 'filename': f.name,
                 'size': stat.st_size,
                 'timestamp': datetime.fromtimestamp(stat.st_mtime).strftime('%H:%M:%S')
             })
-        image_list.append({
-            'src': f"http://{NETWORK_PREFIX}{camera_id}/stream",
-            'filename': f.name,
-            'size': 0,
-            'timestamp': f'now'
-        })
-        return render_template('timeline.html', images=image_list, camera_id=camera_id, stream_url=f"http://{NETWORK_PREFIX}{camera_id}/stream", date=today)
+        
+        # Calculate batches (1000 images per batch)
+        BATCH_SIZE = 1000
+        total_images = len(all_images)
+        num_batches = max(1, (total_images + BATCH_SIZE - 1) // BATCH_SIZE)  # Ceiling division, at least 1
+        
+        # Determine current batch (default to last batch - most recent images)
+        current_batch = batch if batch is not None else num_batches - 1
+        current_batch = max(0, min(current_batch, num_batches - 1))  # Clamp to valid range
+        
+        # Get images for current batch
+        start_idx = current_batch * BATCH_SIZE
+        end_idx = min(start_idx + BATCH_SIZE, total_images)
+        image_list = all_images[start_idx:end_idx]
+        
+        # Add live stream as the last item (only for the most recent batch)
+        if current_batch == num_batches - 1:
+            image_list.append({
+                'src': f"http://{NETWORK_PREFIX}{camera_id}/stream",
+                'filename': 'stream',
+                'size': 0,
+                'timestamp': 'now'
+            })
+        
+        # Generate batch information for navigation
+        batches = []
+        for i in range(num_batches):
+            batch_start_idx = i * BATCH_SIZE
+            batch_end_idx = min(batch_start_idx + BATCH_SIZE, total_images) - 1
+            
+            if batch_start_idx < total_images and batch_end_idx >= 0:
+                first_timestamp = all_images[batch_start_idx]['timestamp']
+                last_timestamp = all_images[batch_end_idx]['timestamp']
+                batch_name = f"{first_timestamp} - {last_timestamp}"
+                
+                batches.append({
+                    'name': batch_name,
+                    'url': f'/timeline/{camera_id}/{i}',
+                    'active': i == current_batch
+                })
+        
+        return render_template('timeline.html', images=image_list, camera_id=camera_id, 
+                             stream_url=f"http://{NETWORK_PREFIX}{camera_id}/stream", 
+                             date=today, batches=batches)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
