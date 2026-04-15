@@ -24,6 +24,13 @@
   </div>
   <div class="timeline-container">
     <div class="time-scrubber" id="timeScrubber">
+      <div class="batch-container">
+        {% for batch in batches %}
+        <a href="{{batch.url}}" class="batch-item" data-active="{{batch.active}}">
+          {{ batch.name }}
+        </a>
+        {% endfor %}
+      </div>
       <div class="scrubber-track" id="scrubberTrack">
         <div class="scrubber-bar" id="scrubberBar">
           <div class="scrubber-tooltip" id="scrubberTooltip">{{images[-2].timestamp}}</div>
