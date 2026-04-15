@@ -36,15 +36,18 @@
       </div>
     </div>
     <div class="timeline" id="timeline" data-images="{{images | length}}">
-      <!-- Timeline items will be rendered dynamically by JavaScript -->
+      {% for image in images %}
+      <div class="timeline-item" onclick="displayImage(parseInt('{{ loop.index0 }}'))" data-item="{{ loop.index0 }}"
+        data-timestamp="{{ image.timestamp }}">
+        <img
+          src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a88%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E"
+          data-src="{{ image.src }}" alt="Captured Image" loading="lazy">
+        <div class="timestamp">{{ image.timestamp }}</div>
+      </div>
+      {% endfor %}
     </div>
   </div>
-  
-  <!-- Pass images data to JavaScript -->
-  <script>
-    window.timelineImages = {{ images | tojson }};
-  </script>
-  <script src="/timeline.js"></script>
 </body>
+<script src="/timeline.js"></script>
 
 </html>

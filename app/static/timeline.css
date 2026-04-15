@@ -93,6 +93,9 @@ body {
     scroll-behavior: smooth;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    /* Hardware acceleration for smoother scrolling */
+    transform: translateZ(0);
+    -webkit-overflow-scrolling: touch;
 }
 
 .timeline::-webkit-scrollbar {
@@ -106,6 +109,10 @@ body {
     overflow: hidden;
     border: 3px solid transparent;
     background: #1a1a1a;
+    /* CSS Performance optimizations */
+    content-visibility: auto;
+    contain: layout style paint;
+    will-change: transform;
 }
 
 .timeline-item:hover {
@@ -129,6 +136,9 @@ body {
     height: 90px;
     object-fit: cover;
     display: block;
+    /* GPU acceleration for smoother rendering */
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 .timeline-item .timestamp {
