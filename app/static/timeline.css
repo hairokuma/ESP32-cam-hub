@@ -77,7 +77,7 @@ body {
 .timeline-container {
     background: #2d2d2d;
     border-radius: 8px;
-    max-height: 200px;
+    max-height: 220px;
     display: flex;
     flex-direction: column;
     padding: 1rem;
@@ -256,6 +256,8 @@ body {
     transform: translateX(-50%) translateY(0);
 }
 
+
+.batch-container,
 .scrubber-labels {
     display: flex;
     justify-content: space-between;
@@ -264,14 +266,19 @@ body {
     gap: 10px;
 }
 
+.batch-item,
 .scrubber-label {
     padding: 3px 8px;
     background: #1a1a1a;
     border-radius: 3px;
     flex: 0 1 auto;
     min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
+.batch-item,
 .scrubber-current {
     color: #4CAF50;
     font-weight: bold;
@@ -279,4 +286,15 @@ body {
     border: 1px solid rgba(76, 175, 80, 0.3);
     flex: 1;
     text-align: center;
+    text-decoration: none;
+}
+
+.batch-item[data-active="True"] {
+    background: rgba(76, 175, 80, 0.3);
+    border-color: rgba(76, 175, 80, 0.5);
+    box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.3);
+}
+
+.batch-item:hover {
+    box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.3);
 }
