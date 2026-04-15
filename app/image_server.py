@@ -12,6 +12,9 @@ import requests
 from flask_cors import CORS
 import subprocess
 from apscheduler.schedulers.background import BackgroundScheduler
+from PIL import Image, ImageDraw, ImageFont
+import tempfile
+import shutil
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 CORS(app)  # Enable CORS for all routes
@@ -43,7 +46,8 @@ def get_camera_id(ip_address):
 
 
 def generate_daily_video(camera_id, date_str):
-    """Generate video from all images of a specific day"""
+    """Generate video from all images of a specific day with timestamp overlays"""
+    temp_dir = None
     try:
         images_folder = os.path.join(UPLOAD_FOLDER, camera_id, 'images', date_str)
         videos_folder = os.path.join(UPLOAD_FOLDER, camera_id, 'videos')
@@ -69,52 +73,89 @@ def generate_daily_video(camera_id, date_str):
         
         output_video = os.path.join(videos_folder, f'{date_str}.mp4')
         
-        # Build ffmpeg command with timestamp overlay
-        # Each image will show its timestamp extracted from filename (e.g., 13-45-45.jpg -> 13:45:45)
-        frame_duration = 1 / VIDEO_FPS
+        # Create temporary directory for timestamped images
+        temp_dir = tempfile.mkdtemp(prefix=f'video_{camera_id}_{date_str}_')
+        print(f"Creating timestamped images in {temp_dir}")
         
-        # Build filter complex for timestamps
-        filter_parts = []
+        # Add timestamp overlay to each image using PIL
+        try:
+            # Try to use a nice font, fall back to default if not available
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 32)
+        except Exception:
+            font = ImageFont.load_default()
+        
+        timestamped_files = []
         for i, img_file in enumerate(image_files):
             # Extract timestamp from filename (e.g., 13-45-45.jpg -> 13:45:45)
             timestamp = img_file.stem.replace('-', ':')
-            # Create drawtext filter for each input with timestamp overlay at bottom right
-            filter_parts.append(
-                f"[{i}:v]drawtext=text='{timestamp}':fontcolor=white:fontsize=32:"
-                f"box=1:boxcolor=black@0.7:boxborderw=8:x=w-tw-20:y=h-th-20[v{i}]"
+            
+            # Open image and add timestamp
+            img = Image.open(img_file)
+            draw = ImageDraw.Draw(img)
+            
+            # Get text size for positioning
+            bbox = draw.textbbox((0, 0), timestamp, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            
+            # Position at bottom right with padding
+            x = img.width - text_width - 20
+            y = img.height - text_height - 20
+            
+            # Draw semi-transparent black background box
+            padding = 8
+            draw.rectangle(
+                [x - padding, y - padding, x + text_width + padding, y + text_height + padding],
+                fill=(0, 0, 0, 180)
             )
+            
+            # Draw white text
+            draw.text((x, y), timestamp, font=font, fill=(255, 255, 255, 255))
+            
+            # Save timestamped image to temp directory
+            temp_file = os.path.join(temp_dir, f"{i:06d}.jpg")
+            img.save(temp_file, quality=95)
+            timestamped_files.append(temp_file)
+            img.close()
+            
+            if (i + 1) % 100 == 0:
+                print(f"  Processed {i + 1}/{len(image_files)} images")
         
-        # Concat all filtered streams
-        concat_inputs = ''.join([f"[v{i}]" for i in range(len(image_files))])
-        filter_complex = ';'.join(filter_parts) + f";{concat_inputs}concat=n={len(image_files)}:v=1:a=0[outv]"
+        print(f"✓ Created {len(timestamped_files)} timestamped images")
         
-        # Build ffmpeg command
-        cmd = ['ffmpeg', '-y']
+        # Create file list for ffmpeg concat demuxer
+        input_list_file = os.path.join(temp_dir, 'input.txt')
+        with open(input_list_file, 'w') as f:
+            for temp_file in timestamped_files:
+                f.write(f"file '{temp_file}'\n")
         
-        # Add each image as input with specific duration
-        for img_file in image_files:
-            cmd.extend(['-loop', '1', '-t', str(frame_duration), '-i', str(os.path.abspath(img_file))])
-        
-        # Add filter complex and output options
-        cmd.extend([
-            '-filter_complex', filter_complex,
-            '-map', '[outv]',
+        # Generate video using ffmpeg with concat demuxer
+        cmd = [
+            'ffmpeg', '-y',
+            '-f', 'concat',
+            '-safe', '0',
+            '-i', input_list_file,
+            '-r', str(VIDEO_FPS),
             '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',
             '-crf', '23',
-            '-r', str(VIDEO_FPS),
             output_video
-        ])
+        ]
         
-        print(f"Running ffmpeg with timestamp overlay...")
+        print("Running ffmpeg to create video...")
         result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        # Clean up temporary directory
+        if temp_dir and os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+            print(f"✓ Cleaned up temporary directory")
         
         if result.returncode == 0:
             print(f"✓ Generated video: {output_video}")
-            # Delete images after successful video creation
+            # Delete original images after successful video creation
             for img in image_files:
                 img.unlink()
-            print(f"✓ Deleted {len(image_files)} images from {date_str}")
+            print(f"✓ Deleted {len(image_files)} original images from {date_str}")
             return True
         else:
             print(f"✗ ffmpeg failed with return code {result.returncode}")
@@ -126,6 +167,12 @@ def generate_daily_video(camera_id, date_str):
         print(f"✗ Video generation error: {e}")
         import traceback
         traceback.print_exc()
+        # Clean up temporary directory on error
+        if temp_dir and os.path.exists(temp_dir):
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception:
+                pass
         return False
 
 
