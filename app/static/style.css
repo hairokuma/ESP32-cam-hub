@@ -47,6 +47,16 @@ body {
     justify-content: space-between;
     align-items: center;
 }
+.stats{
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #00000088;
+    padding: .5rem;
+    font-size: .9rem;
+    text-align: center;
+}
 
 .camera-controls {
     display: flex;
@@ -71,15 +81,4 @@ body {
     align-items: center;
     justify-content: center;
     text-align: center;
-}
-
-.status-indicator{
-    width: 1rem;
-    height: 1rem;
-    border-radius: 50%;
-    background: red;
-}
-
-.status-indicator.online {
-    background: green;
 }

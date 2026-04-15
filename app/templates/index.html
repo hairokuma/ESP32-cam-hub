@@ -14,68 +14,27 @@
     <div class="camera-card" data-camera-id="{{ camera.id }}">
       <div class="stream-overlay">Loading stream…</div>
       <div class="camera-header">
-        <span class="status-indicator {{ 'online' if camera.online else 'offline' }}"></span>
+        <span id="status-indicator">🟢</span>
         <span>{{ camera.ip }}</span>
         <div class="camera-controls">
           <a href="javascript:void(0);" onclick="toggleLED('{{camera.id}}', event)" title="Toggle LED">
             🟡
           </a>
-          <a href="/calendar?camera={{ camera.id }}" title="View Calendar/Videos">
+          <a href="/calendar/{{ camera.id }}" title="View Calendar/Videos">
             📅
           </a>
         </div>
       </div>
-      <img
+      <img onclick="window.location.href='timeline/{{ camera.id }}'"
         src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a88%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E"
         data-stream-url="{{camera.streamUrl}}" alt="Camera Stream" class="camera-stream">
-      <div class="camera-status">
-        <span>
-          {{ camera.imageCount }} images captured {{ camera.latestTime}}
-        </span>
-      </div>
+      <span class="stats">
+        {{ camera.imageCount }} images captured - Latest:{{ camera.latestTime}}
+      </span>
     </div>
     {% endfor %}
   </div>
-  <script>
-    async function toggleLED(cameraId, event) {
-      if (event) event.stopPropagation();
-      const streamImg = event.target.closest('.camera-card').querySelector('.camera-stream');
-      streamImg.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E'; // Show blank image while toggling
-      await fetch(`/camera/${cameraId}/led`, { method: 'GET' })
-        .then(response => response.json())
-        .then(data => {
-          event.target.textContent = data.led == 'on' ? '⚫': '🟡';
-          
-        })
-        .catch(error => {
-          console.error('Error toggling LED:', error);
-        });
-      loadStream(streamImg);
-    }
-    function init() {
-      const streamImages = document.querySelectorAll('.camera-stream');
-      streamImages.forEach(img => {
-        loadStream(img);
-      });
-    }
-
-    function loadStream(img) {
-      const streamUrl = img.dataset.streamUrl;
-      const overlay = img.parentElement.querySelector('.stream-overlay');
-      overlay.textContent = 'Loading stream…';
-      if (!streamUrl) return;
-      img.onload = () => {
-        overlay.textContent = '';
-      };
-      img.onerror = () => {
-        overlay.textContent = 'Failed to load stream';
-      };
-      img.src = streamUrl;
-    }
-    setTimeout(() => {
-      init();
-    }, 100);
-  </script>
 </body>
+<script src="/main.js"></script>
 
 </html>

@@ -17,7 +17,7 @@ app = Flask(__name__, static_folder='static', static_url_path='')
 CORS(app)  # Enable CORS for all routes
 
 # Configuration
-NETWORK_PREFIX = '192.168.2.'  # Adjust to your network
+NETWORK_PREFIX = os.getenv('NETWORK_PREFIX', '192.168.2.')  # Adjust to your network
 UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', '/data')  # Use env var, default to /data
 VIDEO_FPS = 24  # Frames per second for videos
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg'}
@@ -200,89 +200,9 @@ def serve_upload(camera_id, filename):
     except Exception as e:
         return jsonify({'error': str(e)}), 404
 
-
-@app.route('/latest', methods=['GET'])
-@app.route('/latest/<camera_id>', methods=['GET'])
-def get_latest_image(camera_id=None):
-    """Return the most recent uploaded image (optionally for specific camera)"""
-    
-    try:
-        today = datetime.now().strftime('%Y-%m-%d')
-        
-        if camera_id:
-            # Get latest from specific camera today
-            today_folder = os.path.join(UPLOAD_FOLDER, camera_id, 'images', today)
-            
-            if not os.path.exists(today_folder):
-                return jsonify({'error': f'No images for camera {camera_id} today'}), 404
-            
-            files = sorted(
-                Path(today_folder).glob('*.jpg'),
-                key=lambda x: x.stat().st_mtime,
-                reverse=True
-            )
-            
-            if files:
-                return send_file(str(files[0]), mimetype='image/jpeg')
-        
-        return jsonify({'error': 'No images available'}), 404
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
 @app.route('/stats', methods=['GET'])
 def get_stats():
-    return get_camera_stats()
-
-def get_camera_stats():
-    """Get upload statistics"""
-    
-    # Get all camera folders
-    camera_folders = [d for d in Path(UPLOAD_FOLDER).iterdir() if d.is_dir()]
-    
-    cameras = {}
-    total_images = 0
-    
-    for camera_folder in camera_folders:
-        camera_id = camera_folder.name
-        
-        # Count today's images
-        today = datetime.now().strftime('%Y-%m-%d')
-        today_folder = camera_folder / 'images' / today
-        
-        if today_folder.exists():
-            image_count = len(list(today_folder.glob('*.jpg')))
-            total_images += image_count
-            
-            # Get latest image for this camera
-            files = sorted(
-                today_folder.glob('*.jpg'),
-                key=lambda x: x.stat().st_mtime,
-                reverse=True
-            )
-            
-            latest_file = files[0].name if files else None
-            latest_time = datetime.fromtimestamp(files[0].stat().st_mtime).strftime('%d.%m.%Y %H:%M:%S') if files else None
-        else:
-            image_count = 0
-            latest_file = None
-            latest_time = None
-        
-        cameras[camera_id] = {
-            'image_count': image_count,
-            'latest_image': latest_file,
-            'latest_time': latest_time
-        }
-    
-    return jsonify({
-        'total_uploads': upload_stats['total_uploads'],
-        'total_images_today': total_images,
-        'active_cameras': len(cameras),
-        'cameras': cameras,
-        'last_upload': upload_stats['last_upload_time'],
-        'last_size_bytes': upload_stats['last_image_size']
-    })
+    return get_cameras()
 
 def get_cameras():
     """Get list of active cameras based on upload folders"""
@@ -313,161 +233,54 @@ def get_cameras():
     
     return cameras
 
-@app.route('/images', methods=['GET'])
-@app.route('/images/<camera_id>', methods=['GET'])
-def list_images(camera_id=None):
-    """List all stored images for today (optionally filtered by camera)"""
-    
-    try:
-        today = datetime.now().strftime('%Y-%m-%d')
-        
-        if camera_id:
-            # List today's images for specific camera
-            today_folder = os.path.join(UPLOAD_FOLDER, camera_id, 'images', today)
-            
-            if not os.path.exists(today_folder):
-                return jsonify({'camera_id': camera_id, 'count': 0, 'images': []})
-            
-            files = sorted(
-                Path(today_folder).glob('*.jpg'),
-                key=lambda x: x.stat().st_mtime,
-                reverse=True
-            )
-            
-            image_list = []
-            for f in files:
-                stat = f.stat()
-                image_list.append({
-                    'filename': f.name,
-                    'camera_id': camera_id,
-                    'size': stat.st_size,
-                    'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%d.%m.%Y %H:%M:%S')
-                })
-            
-            return jsonify({
-                'camera_id': camera_id,
-                'date': today,
-                'count': len(image_list),
-                'images': image_list
-            })
-        else:
-            # List all today's images organized by camera
-            camera_folders = [d for d in Path(UPLOAD_FOLDER).iterdir() if d.is_dir()]
-            
-            all_cameras = {}
-            total_count = 0
-            
-            for camera_folder in camera_folders:
-                cam_id = camera_folder.name
-                today_folder = camera_folder / 'images' / today
-                
-                if not today_folder.exists():
-                    continue
-                    
-                files = sorted(
-                    today_folder.glob('*.jpg'),
-                    key=lambda x: x.stat().st_mtime,
-                    reverse=True
-                )
-                
-                image_list = []
-                for f in files:
-                    stat = f.stat()
-                    image_list.append({
-                        'filename': f.name,
-                        'size': stat.st_size,
-                        'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%d.%m.%Y %H:%M:%S')
-                    })
-                
-                all_cameras[cam_id] = {
-                    'count': len(image_list),
-                    'images': image_list
-                }
-                total_count += len(image_list)
-            
-            return jsonify({
-                'date': today,
-                'total_images': total_count,
-                'cameras': all_cameras
-            })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
 @app.route('/', methods=['GET'])
 def index():
     """Serve the main frontend"""
-    
     return render_template('index.html', cameras=get_cameras())
 
 
-@app.route('/dashboard', methods=['GET'])
-def dashboard():
-    """Simple status page"""
-    
-    # Get all camera folders
-    camera_folders = sorted([d for d in Path(UPLOAD_FOLDER).iterdir() if d.is_dir()], 
-                           key=lambda x: x.name)
-    
-    camera_sections = ""
-    for camera_folder in camera_folders:
-        camera_id = camera_folder.name
-        image_count = len(list(camera_folder.glob('*.jpg')))
-        
-        camera_sections += f"""
-        <div class="camera-section">
-            <h2>Camera {camera_id} (192.168.2.{camera_id})</h2>
-            <div class="stat">Images stored: {image_count}</div>
-            <img src="/latest/{camera_id}" alt="Camera {camera_id}" onerror="this.style.display='none'">
-            <p class="info">
-                <a href="/images/{camera_id}">View all images</a> | 
-                <a href="/latest/{camera_id}">Latest image</a>
-            </p>
-        </div>
-        """
-    
-    if not camera_sections:
-        camera_sections = '<p class="info">No cameras connected yet</p>'
-    
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>ESP32-CAM Server</title>
-        <meta http-equiv="refresh" content="60">
-        <style>
-            body {{ font-family: Arial, sans-serif; margin: 40px; background: #f0f0f0; }}
-            .container {{ max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }}
-            h1 {{ color: #333; }}
-            .stat {{ margin: 10px 0; padding: 10px; background: #f9f9f9; border-left: 4px solid #4CAF50; }}
-            .camera-section {{ margin: 30px 0; padding: 20px; background: #fafafa; border-radius: 8px; border: 1px solid #ddd; }}
-            img {{ max-width: 100%; height: auto; border: 2px solid #ddd; margin-top: 10px; }}
-            .info {{ color: #666; font-size: 14px; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>ESP32-CAM Multi-Camera Server</h1>
-            <div class="stat">✓ Server Running</div>
-            <div class="stat">Total Uploads: {upload_stats['total_uploads']}</div>
-            <div class="stat">Last Upload: {upload_stats['last_upload_time'] or 'None'}</div>
-            <div class="stat">Active Cameras: {len(camera_folders)}</div>
-            
-            {camera_sections}
-            
-            <p class="info">Page auto-refreshes every 60 seconds</p>
-            <p class="info">
-                <a href="/stats">View Stats (JSON)</a> | 
-                <a href="/images">List All Images (JSON)</a>
-            </p>
-        </div>
-    </body>
-    </html>
-    """
-    
-    return html
+@app.route('/timeline/<camera_id>', methods=['GET'])
+def timeline(camera_id=None):
+    """Serve the timeline frontend"""
+    try:
+        today = datetime.now().strftime('%Y-%m-%d')
 
+        # List today's images for specific camera
+        today_folder = os.path.join(UPLOAD_FOLDER, camera_id, 'images', today)
+        
+        if not os.path.exists(today_folder):
+            return jsonify({'camera_id': camera_id, 'count': 0, 'images': []})
+        
+        files = sorted(
+            Path(today_folder).glob('*.jpg'),
+            key=lambda x: x.stat().st_mtime,
+            reverse=False
+        )
+        
+        image_list = []
+        for f in files[-100:]:
+            stat = f.stat()
+            image_list.append({
+                'src': f'/uploads/{camera_id}/{f.name}',
+                'filename': f.name,
+                'size': stat.st_size,
+                'timestamp': datetime.fromtimestamp(stat.st_mtime).strftime('%H:%M:%S')
+            })
+        image_list.append({
+            'src': f"http://{NETWORK_PREFIX}{camera_id}/stream",
+            'filename': f.name,
+            'size': 0,
+            'timestamp': f'now'
+        })
+        return render_template('timeline.html', images=image_list, camera_id=camera_id, stream_url=f"http://{NETWORK_PREFIX}{camera_id}/stream", date=today)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    
+@app.route('/calendar/<camera_id>', methods=['GET'])
+def calendar(camera_id=None):
+    """Serve the calendar page"""
+    return render_template('calendar.html')
 
 @app.route('/camera/<camera_id>/led', methods=['GET'])
 def control_led(camera_id):
@@ -495,48 +308,6 @@ def control_led(camera_id):
         return jsonify({'error': 'Camera not reachable', 'camera_id': camera_id}), 503
     except Exception as e:
         return jsonify({'error': str(e), 'camera_id': camera_id}), 500
-
-
-@app.route('/camera/<camera_id>/quality', methods=['GET'])
-def control_quality(camera_id):
-    """Proxy endpoint to change camera quality settings (avoids CORS issues)"""
-    
-    try:
-        # Get resolution parameter
-        resolution = request.args.get('resolution')
-        camera_ip = f"{NETWORK_PREFIX}{camera_id}"
-        
-        if not resolution:
-            # If no resolution specified, return current settings
-            response = requests.get(
-                f"http://{camera_ip}/quality",
-                timeout=5
-            )
-        else:
-            # Change quality setting
-            response = requests.get(
-                f"http://{camera_ip}/quality",
-                params={'resolution': resolution},
-                timeout=10  # Longer timeout for quality changes
-            )
-        
-        if response.ok:
-            return jsonify(response.json()), 200
-        else:
-            return jsonify({'error': 'Failed to change quality', 'camera_id': camera_id}), response.status_code
-            
-    except requests.exceptions.Timeout:
-        return jsonify({'error': 'Camera timeout', 'camera_id': camera_id}), 504
-    except requests.exceptions.ConnectionError:
-        return jsonify({'error': 'Camera not reachable', 'camera_id': camera_id}), 503
-    except Exception as e:
-        return jsonify({'error': str(e), 'camera_id': camera_id}), 500
-
-
-@app.route('/calendar')
-def calendar_page():
-    """Serve the calendar page"""
-    return send_from_directory('static', 'calendar.html')
 
 
 @app.route('/api/calendar/<camera_id>', methods=['GET'])
@@ -582,20 +353,6 @@ def serve_video(camera_id, date):
         return send_from_directory(videos_folder, video_file)
     except Exception as e:
         return jsonify({'error': str(e)}), 404
-
-
-@app.route('/api/generate-video/<camera_id>/<date>', methods=['POST'])
-def manual_video_generation(camera_id, date):
-    """Manually trigger video generation for a specific date"""
-    try:
-        result = generate_daily_video(camera_id, date)
-        if result:
-            return jsonify({'status': 'success', 'camera_id': camera_id, 'date': date})
-        else:
-            return jsonify({'status': 'failed', 'message': 'Not enough images or ffmpeg error'}), 400
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 
 if __name__ == '__main__':
     print("=" * 50)
