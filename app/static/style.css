@@ -54,7 +54,7 @@ body {
     right: 0;
     background: #00000088;
     padding: .5rem;
-    font-size: .9rem;
+    font-size: .8rem !important;
     text-align: center;
 }
 
