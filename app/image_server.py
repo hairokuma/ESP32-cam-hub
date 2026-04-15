@@ -447,7 +447,7 @@ if __name__ == '__main__':
     print("=" * 50)
     
     # for testing generate_daily_video for today's images, uncomment the line below:
-    generate_daily_video('129', datetime.now().strftime('%Y-%m-%d'))
+    # generate_daily_video('129', datetime.now().strftime('%Y-%m-%d'))
 
     try:
         app.run(host='0.0.0.0', port=5000, debug=True)
