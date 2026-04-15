@@ -230,7 +230,7 @@ def get_cameras():
                 "online": latest_time is not None and (datetime.now() - datetime.strptime(latest_time, '%d.%m.%Y %H:%M:%S')).total_seconds() < 300 # Consider online if last upload was within 5 minutes
             }
         )
-    
+    cameras.sort(key=lambda x: int(x['id']))
     return cameras
 
 @app.route('/', methods=['GET'])
