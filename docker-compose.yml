@@ -8,6 +8,7 @@ services:
     environment:
       - TZ=Europe/Berlin
       - UPLOAD_FOLDER=/data
+      - NETWORK_PREFIX=192.168.2.
     volumes:
       - ./app:/app
       - ./data:/data

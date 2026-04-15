@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32-CAM Calendar</title>
+  <link rel="stylesheet" href="/calendar.css">
+</head>
+
+<body>
+  <a href="/" class="close-btn">&times;</a>
+
+  <div class="calendar-container">
+    <div class="calendar-header">
+      <button id="prevMonth" class="nav-btn">‹</button>
+      <h2 id="currentMonth">April 2026</h2>
+      <button id="nextMonth" class="nav-btn">›</button>
+    </div>
+
+    <div class="calendar-grid">
+      <div class="day-name">Mo</div>
+      <div class="day-name">Di</div>
+      <div class="day-name">Mi</div>
+      <div class="day-name">Do</div>
+      <div class="day-name">Fr</div>
+      <div class="day-name">Sa</div>
+      <div class="day-name">So</div>
+
+      <!-- Days will be populated by JavaScript -->
+    </div>
+  </div>
+
+  <div class="video-modal" id="videoModal">
+    <button class="close-btn" id="closeVideo">&times;</button>
+    <div>
+      <video id="videoPlayer" controls>
+        <source id="videoSource" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+      <div class="video-info">
+        <span id="videoDate"></span>
+        <span id="videoSize"></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+
+  </script>
+</body>
+<script src="/calendar.js"></script>
+
+
+</html>

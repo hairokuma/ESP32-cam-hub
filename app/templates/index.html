@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32-CAM Multi-Camera View</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="container" id="cameraGrid">
+    {% for camera in cameras %}
+    <div class="camera-card" data-camera-id="{{ camera.id }}">
+      <div class="stream-overlay">Loading stream…</div>
+      <div class="camera-header">
+        <span id="status-indicator">🟢</span>
+        <span>{{ camera.ip }}</span>
+        <div class="camera-controls">
+          <a href="javascript:void(0);" onclick="toggleLED('{{camera.id}}', event)" title="Toggle LED">
+            🟡
+          </a>
+          <a href="/calendar/{{ camera.id }}" title="View Calendar/Videos">
+            📅
+          </a>
+        </div>
+      </div>
+      <img onclick="window.location.href='timeline/{{ camera.id }}'"
+        src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a88%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E"
+        data-stream-url="{{camera.streamUrl}}" alt="Camera Stream" class="camera-stream">
+      <span class="stats">
+        {{ camera.imageCount }} images captured - Latest:{{ camera.latestTime}}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+</body>
+<script src="/main.js"></script>
+
+</html>
