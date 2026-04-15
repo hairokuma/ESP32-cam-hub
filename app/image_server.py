@@ -258,7 +258,7 @@ def timeline(camera_id=None):
         )
         
         image_list = []
-        for f in files[-100:]:
+        for f in files:
             stat = f.stat()
             image_list.append({
                 'src': f'/uploads/{camera_id}/{f.name}',
