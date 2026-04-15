@@ -51,8 +51,16 @@ function displayImage(i, scroll = true) {
     const activeItem = document.querySelector(`.timeline-item[data-item="${index}"]`);
 
     if (!activeItem) return
-    const dummy = activeItem.cloneNode(true)
-    dummy.classList.add('timeline-item-dummy')
+    const timestamp = activeItem.getAttribute('data-timestamp');
+    // const dummy = activeItem.cloneNode(true)
+    const dummy = document.createElement('div');
+    dummy.classList.add('timeline-item');
+    dummy.classList.add('timeline-item-dummy');
+    dummy.innerHTML = `<img
+          src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a88%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E"
+          data-src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a88%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E" 
+          alt="Captured Image">
+        <div class="timestamp">${timestamp}</div>`
     timeline.insertBefore(dummy, activeItem)
     activeItem.classList.add('active');
     activeItem.classList.remove('timeline-item');
