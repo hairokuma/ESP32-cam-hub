@@ -69,34 +69,45 @@ def generate_daily_video(camera_id, date_str):
         
         output_video = os.path.join(videos_folder, f'{date_str}.mp4')
         
-        # Create a temporary file list for ffmpeg (more reliable than glob pattern)
-        input_list_file = os.path.join(videos_folder, f'input_{date_str}.txt')
-        with open(input_list_file, 'w') as f:
-            for img_file in image_files:
-                # Use absolute paths and escape spaces
-                f.write(f"file '{os.path.abspath(img_file)}'\n")
+        # Build ffmpeg command with timestamp overlay
+        # Each image will show its timestamp extracted from filename (e.g., 13-45-45.jpg -> 13:45:45)
+        frame_duration = 1 / VIDEO_FPS
         
-        # Generate video using ffmpeg with input file list
-        cmd = [
-            'ffmpeg', '-y',  # Overwrite output file
-            '-f', 'concat',
-            '-safe', '0',
-            '-r', str(VIDEO_FPS),
-            '-i', input_list_file,
+        # Build filter complex for timestamps
+        filter_parts = []
+        for i, img_file in enumerate(image_files):
+            # Extract timestamp from filename (e.g., 13-45-45.jpg -> 13:45:45)
+            timestamp = img_file.stem.replace('-', ':')
+            # Create drawtext filter for each input with timestamp overlay at bottom right
+            filter_parts.append(
+                f"[{i}:v]drawtext=text='{timestamp}':fontcolor=white:fontsize=32:"
+                f"box=1:boxcolor=black@0.7:boxborderw=8:x=w-tw-20:y=h-th-20[v{i}]"
+            )
+        
+        # Concat all filtered streams
+        concat_inputs = ''.join([f"[v{i}]" for i in range(len(image_files))])
+        filter_complex = ';'.join(filter_parts) + f";{concat_inputs}concat=n={len(image_files)}:v=1:a=0[outv]"
+        
+        # Build ffmpeg command
+        cmd = ['ffmpeg', '-y']
+        
+        # Add each image as input with specific duration
+        for img_file in image_files:
+            cmd.extend(['-loop', '1', '-t', str(frame_duration), '-i', str(os.path.abspath(img_file))])
+        
+        # Add filter complex and output options
+        cmd.extend([
+            '-filter_complex', filter_complex,
+            '-map', '[outv]',
             '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',
-            '-crf', '23',  # Quality (lower = better, 23 is default)
+            '-crf', '23',
+            '-r', str(VIDEO_FPS),
             output_video
-        ]
+        ])
         
-        print(f"Running ffmpeg command: {' '.join(cmd)}")
+        print(f"Running ffmpeg with timestamp overlay...")
         result = subprocess.run(cmd, capture_output=True, text=True)
-        
-        # Clean up temporary input list file
-        try:
-            os.remove(input_list_file)
-        except:
-            pass
         
         if result.returncode == 0:
             print(f"✓ Generated video: {output_video}")
@@ -388,6 +399,9 @@ if __name__ == '__main__':
     print("ESP32 upload URL: http://YOUR_IP:5000/upload")
     print("=" * 50)
     
+    # for testing generate_daily_video for today's images, uncomment the line below:
+    generate_daily_video('129', datetime.now().strftime('%Y-%m-%d'))
+
     try:
         app.run(host='0.0.0.0', port=5000, debug=True)
     except (KeyboardInterrupt, SystemExit):
