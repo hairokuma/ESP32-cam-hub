@@ -2,16 +2,21 @@
 let timelineState = {
     cameraId: null,
     date: null,
+    batch: null,
     images: [],
+    batches: [],
+    currentBatch: 0,
+    numBatches: 0,
     isDragging: false,
     currentIndex: 0,
     observer: null
 };
 
 // Open timeline for a camera
-async function openTimeline(cameraId, date = null) {
+async function openTimeline(cameraId, date = null, batch = null) {
     timelineState.cameraId = cameraId;
     timelineState.date = date || new Date().toISOString().split('T')[0];
+    timelineState.batch = batch;
     
     const overlay = document.getElementById('timelineOverlay');
     overlay.classList.add('active');
@@ -44,7 +49,11 @@ function closeTimeline() {
     timelineState = {
         cameraId: null,
         date: null,
+        batch: null,
         images: [],
+        batches: [],
+        currentBatch: 0,
+        numBatches: 0,
         isDragging: false,
         currentIndex: 0,
         observer: null
@@ -54,20 +63,76 @@ function closeTimeline() {
 // Load timeline data from API
 async function loadTimelineData() {
     try {
-        const url = `/api/timeline/${timelineState.cameraId}?date=${timelineState.date}`;
+        // Build URL with optional batch parameter
+        let url = `/api/timeline/${timelineState.cameraId}`;
+        if (timelineState.batch !== null) {
+            url += `/${timelineState.batch}`;
+        }
+        url += `?date=${timelineState.date}`;
+        
         const response = await fetch(url);
         const data = await response.json();
-        
         timelineState.images = data.images || [];
-        console.log(`Loaded ${timelineState.images.length} images for timeline`);
+        timelineState.batches = data.batches || [];
+        timelineState.currentBatch = data.current_batch || 0;
+        timelineState.numBatches = data.num_batches || 1;
+        
+        console.log(`Loaded ${timelineState.images.length} images for timeline (batch ${timelineState.currentBatch + 1}/${timelineState.numBatches})`);
     } catch (error) {
         console.error('Failed to load timeline data:', error);
         timelineState.images = [];
+        timelineState.batches = [];
     }
+}
+
+// Switch to a different batch
+async function switchBatch(batchIndex) {
+    if (batchIndex === timelineState.currentBatch) return;
+    
+    timelineState.batch = batchIndex;
+    await loadTimelineData();
+    renderTimeline();
+    initializeLazyLoading();
+    
+    // Scroll to last image in new batch
+    setTimeout(() => {
+        displayImage(timelineState.images.length - 1);
+    }, 200);
+}
+
+// Render batch navigation
+function renderBatchNavigation() {
+    const container = document.getElementById('batchNavigation');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (timelineState.batches.length <= 1) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.style.display = 'flex';
+    
+    timelineState.batches.forEach(batch => {
+        const item = document.createElement('a');
+        item.href = 'javascript:void(0)';
+        item.className = 'batch-item';
+        item.textContent = batch.name;
+        item.dataset.active = batch.active;
+        item.onclick = (e) => {
+            e.preventDefault();
+            switchBatch(batch.index);
+        };
+        container.appendChild(item);
+    });
 }
 
 // Render timeline images
 function renderTimeline() {
+    // Render batch navigation first
+    renderBatchNavigation();
+    
     const timeline = document.getElementById('timeline');
     timeline.innerHTML = '';
     
