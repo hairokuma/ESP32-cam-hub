@@ -1,79 +1,88 @@
-// State
-let currentDate = new Date();
-let currentCamera = window.location.href.split("/").pop();
-let videoDates = new Set();
-let videoData = {};
-const videoSource = document.getElementById('videoSource');
-const videoPlayer = document.getElementById('videoPlayer');
-const modal = document.getElementById('videoModal');
-const grid = document.querySelector('.calendar-grid');
+// Calendar State Management
+const calendarStates = {};
 
-// Initialize
-document.addEventListener('DOMContentLoaded', async () => {
-    setupEventListeners();
-    await loadVideoData();
-    renderCalendar();
-});
-
-
-function setupEventListeners() {
-    document.getElementById('prevMonth').addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() - 1);
-        renderCalendar();
-    });
-
-    document.getElementById('nextMonth').addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() + 1);
-        renderCalendar();
-    });
-
-    document.getElementById('closeVideo').addEventListener('click', closeVideoModal);
-
-    document.getElementById('videoModal').addEventListener('click', (e) => {
-        if (e.target.id === 'videoModal') {
-            closeVideoModal();
-        }
-    });
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            closeVideoModal();
-        }
-    });
+// Initialize calendar state for a camera
+function initCalendar(cameraId) {
+    if (!calendarStates[cameraId]) {
+        calendarStates[cameraId] = {
+            currentDate: new Date(),
+            videoDates: new Set(),
+            videoData: {}
+        };
+    }
+    return calendarStates[cameraId];
 }
 
+// Toggle calendar visibility for a camera
+function toggleCalendar(cameraId, event) {
+    if (event) event.stopPropagation();
+    
+    const calendarWrapper = document.getElementById(`calendar-${cameraId}`);
+    if (!calendarWrapper) return;
+    
+    if (calendarWrapper.style.display === 'none') {
+        // Show calendar
+        calendarWrapper.style.display = 'block';
+        initCalendar(cameraId);
+        loadVideoData(cameraId).then(() => {
+            renderCalendar(cameraId);
+        });
+    } else {
+        // Hide calendar
+        calendarWrapper.style.display = 'none';
+    }
+}
 
+// Navigate months
+function navigateMonth(cameraId, direction) {
+    const state = calendarStates[cameraId];
+    if (!state) return;
+    
+    state.currentDate.setMonth(state.currentDate.getMonth() + direction);
+    renderCalendar(cameraId);
+}
 
-async function loadVideoData() {
+// Load video data for a camera
+async function loadVideoData(cameraId) {
     try {
-        const response = await fetch(`/api/calendar/${currentCamera}`);
+        const response = await fetch(`/api/calendar/${cameraId}`);
         const data = await response.json();
 
-        videoDates = new Set();
-        videoData = {};
+        const state = calendarStates[cameraId];
+        state.videoDates = new Set();
+        state.videoData = {};
 
         if (data.videos) {
             data.videos.forEach(video => {
-                videoDates.add(video.date);
-                videoData[video.date] = video;
+                state.videoDates.add(video.date);
+                state.videoData[video.date] = video;
             });
-            console.log(videoDates, videoData);
         }
 
-        console.log(`Loaded ${videoDates.size} videos for camera ${currentCamera}`);
+        console.log(`Loaded ${state.videoDates.size} videos for camera ${cameraId}`);
     } catch (error) {
         console.error('Failed to load video data:', error);
     }
 }
 
-function renderCalendar() {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+// Render calendar for a camera
+function renderCalendar(cameraId) {
+    const state = calendarStates[cameraId];
+    if (!state) return;
+    
+    const calendarWrapper = document.getElementById(`calendar-${cameraId}`);
+    if (!calendarWrapper) return;
+    
+    const year = state.currentDate.getFullYear();
+    const month = state.currentDate.getMonth();
 
     // Update header
     const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
         'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-    document.getElementById('currentMonth').textContent = `${monthNames[month]} ${year}`;
+    const monthTitle = calendarWrapper.querySelector('.calendar-month-title');
+    if (monthTitle) {
+        monthTitle.textContent = `${monthNames[month]} ${year}`;
+    }
 
     // Get first day of month and number of days
     const firstDay = new Date(year, month, 1);
@@ -90,6 +99,10 @@ function renderCalendar() {
     const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
     const todayDate = today.getDate();
 
+    // Get grid
+    const grid = calendarWrapper.querySelector('.calendar-grid');
+    if (!grid) return;
+    
     // Clear grid (keep day names)
     const dayNames = Array.from(grid.querySelectorAll('.day-name'));
     grid.innerHTML = '';
@@ -115,20 +128,29 @@ function renderCalendar() {
 
         // Check if there's a video for this date
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        if (videoDates.has(dateStr)) {
+        if (state.videoDates.has(dateStr)) {
             dayDiv.classList.add('has-video');
-            dayDiv.onclick = () => playVideo(dateStr);
-            dayDiv.title = `Play video - ${videoData[dateStr].size_mb} MB`;
+            dayDiv.onclick = () => playVideo(cameraId, dateStr);
+            dayDiv.title = `Play video - ${state.videoData[dateStr].size_mb} MB`;
         }
 
         grid.appendChild(dayDiv);
     }
 }
-function playVideo(dateStr) {
-    const video = videoData[dateStr];
+
+// Play video
+function playVideo(cameraId, dateStr) {
+    const state = calendarStates[cameraId];
+    if (!state) return;
+    
+    const video = state.videoData[dateStr];
     if (!video) return;
 
-    videoSource.src = `/video/${currentCamera}/${dateStr}`;
+    const videoSource = document.getElementById('videoSource');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const modal = document.getElementById('videoModal');
+
+    videoSource.src = `/video/${cameraId}/${dateStr}`;
     videoPlayer.load();
 
     // Update modal info
@@ -143,8 +165,32 @@ function playVideo(dateStr) {
     videoPlayer.play();
 }
 
+// Close video modal
 function closeVideoModal() {
+    const modal = document.getElementById('videoModal');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const videoSource = document.getElementById('videoSource');
+    
     modal.classList.remove('active');
     videoPlayer.pause();
     videoSource.src = '';
 }
+
+// Setup video modal event listeners (call once on page load)
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('videoModal');
+    
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target.id === 'videoModal') {
+                closeVideoModal();
+            }
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeVideoModal();
+        }
+    });
+});

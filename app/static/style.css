@@ -82,3 +82,51 @@ body {
     justify-content: center;
     text-align: center;
 }
+
+/* Calendar embedded in card */
+.calendar-wrapper {
+    padding: 1rem;
+    background: #1a1a1a;
+}
+
+.calendar-wrapper .calendar-container {
+    max-width: 100%;
+    height: auto;
+}
+
+.calendar-wrapper .calendar-header h2 {
+    font-size: 1.2rem;
+}
+
+.calendar-wrapper .calendar-grid {
+    gap: 0.25rem;
+}
+
+.calendar-wrapper .calendar-day {
+    font-size: 14px;
+    padding: 8px;
+}
+
+/* Timeline Overlay */
+.timeline-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    z-index: 9999;
+    display: none;
+}
+
+.timeline-overlay.active {
+    display: flex;
+    flex-direction: column;
+}
+
+.timeline-overlay .close-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+}

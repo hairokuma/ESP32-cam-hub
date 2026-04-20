@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ESP32-CAM Multi-Camera View</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="calendar.css">
+  <link rel="stylesheet" href="timeline.css">
 </head>
 
 <body>
@@ -20,21 +22,93 @@
           <a href="javascript:void(0);" onclick="toggleLED('{{camera.id}}', event)" title="Toggle LED">
             🟡
           </a>
-          <a href="/calendar/{{ camera.id }}" title="View Calendar/Videos">
+          <a href="javascript:void(0);" onclick="toggleCalendar('{{camera.id}}', event)" title="View Calendar/Videos">
             📅
           </a>
         </div>
       </div>
-      <img onclick="window.location.href='timeline/{{ camera.id }}'"
+      <img onclick="openTimeline('{{ camera.id }}')"
         src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a88%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E"
         data-stream-url="{{camera.streamUrl}}" alt="Camera Stream" class="camera-stream">
       <span class="stats">
         {{ camera.imageCount }} images captured - Latest:{{ camera.latestTime}}
       </span>
+      
+      <!-- Calendar embedded in camera card (hidden by default) -->
+      <div class="calendar-wrapper" id="calendar-{{ camera.id }}" style="display: none;">
+        <div class="calendar-container">
+          <div class="calendar-header">
+            <button class="nav-btn" onclick="navigateMonth('{{ camera.id }}', -1)">‹</button>
+            <h2 class="calendar-month-title">April 2026</h2>
+            <button class="nav-btn" onclick="navigateMonth('{{ camera.id }}', 1)">›</button>
+          </div>
+          <div class="calendar-grid">
+            <div class="day-name">Mo</div>
+            <div class="day-name">Di</div>
+            <div class="day-name">Mi</div>
+            <div class="day-name">Do</div>
+            <div class="day-name">Fr</div>
+            <div class="day-name">Sa</div>
+            <div class="day-name">So</div>
+            <!-- Days will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
     </div>
     {% endfor %}
   </div>
+
+  <!-- Video Modal (shared across all calendars) -->
+  <div class="video-modal" id="videoModal">
+    <button class="close-btn" onclick="closeVideoModal()">&times;</button>
+    <div>
+      <video id="videoPlayer" controls>
+        <source id="videoSource" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+      <div class="video-info">
+        <span id="videoDate"></span>
+        <span id="videoSize"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline Overlay (hidden by default) -->
+  <div class="timeline-overlay" id="timelineOverlay" style="display: none;">
+    <button class="close-btn" onclick="closeTimeline()">&times;</button>
+    <div class="media-container">
+      <button class="nav-arrow nav-arrow-left" id="prevImage" title="Previous (←)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <button class="nav-arrow nav-arrow-right" id="nextImage" title="Next (→)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
+    <div class="timeline-container">
+      <div class="time-scrubber" id="timeScrubber">
+        <div class="scrubber-track" id="scrubberTrack">
+          <div class="scrubber-bar" id="scrubberBar">
+            <div class="scrubber-tooltip" id="scrubberTooltip"></div>
+          </div>
+        </div>
+        <div class="scrubber-labels">
+          <span class="scrubber-label" id="scrubberStart"></span>
+          <span class="scrubber-label scrubber-current" id="scrubberTime"></span>
+          <span class="scrubber-label" id="scrubberEnd"></span>
+        </div>
+      </div>
+      <div class="timeline" id="timeline">
+        <!-- Timeline items will be populated by JavaScript -->
+      </div>
+    </div>
+  </div>
 </body>
 <script src="/main.js"></script>
+<script src="/calendar.js"></script>
+<script src="/timeline.js"></script>
 
 </html>

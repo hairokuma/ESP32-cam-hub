@@ -4,14 +4,12 @@
     box-sizing: border-box;
 }
 
-html,
-body {
+/* Standalone page styles (kept for backward compatibility) */
+html:not(.spa-mode),
+body:not(.spa-mode) {
     margin: 0;
     height: 100%;
     overflow: hidden;
-}
-
-body {
     background: #000;
     color: #fff;
     font-family: Arial, sans-serif;
@@ -19,7 +17,6 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-
 }
 
 

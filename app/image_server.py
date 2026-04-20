@@ -4,7 +4,7 @@ ESP32-CAM Image Upload Server
 Receives and saves images from ESP32 camera
 """
 
-from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from datetime import datetime, timedelta
 import os
 from pathlib import Path
@@ -148,7 +148,7 @@ def generate_daily_video(camera_id, date_str):
         # Clean up temporary directory
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
-            print(f"✓ Cleaned up temporary directory")
+            print("✓ Cleaned up temporary directory")
         
         if result.returncode == 0:
             print(f"✓ Generated video: {output_video}")
@@ -250,11 +250,12 @@ def upload_image():
 
 @app.route('/uploads/<camera_id>/<filename>', methods=['GET'])
 def serve_upload(camera_id, filename):
-    """Serve uploaded images from today's folder"""
+    """Serve uploaded images from today's folder or specific date"""
     try:
-        today = datetime.now().strftime('%Y-%m-%d')
-        today_folder = os.path.join(UPLOAD_FOLDER, camera_id, 'images', today)
-        return send_from_directory(today_folder, filename)
+        # Check if date is specified in query parameter
+        date = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
+        images_folder = os.path.join(UPLOAD_FOLDER, camera_id, 'images', date)
+        return send_from_directory(images_folder, filename)
     except Exception as e:
         return jsonify({'error': str(e)}), 404
 
@@ -297,20 +298,20 @@ def index():
     return render_template('index.html', cameras=get_cameras())
 
 
-@app.route('/timeline/<camera_id>', methods=['GET'])
-def timeline(camera_id=None):
-    """Serve the timeline frontend"""
+@app.route('/api/timeline/<camera_id>', methods=['GET'])
+def get_timeline_data(camera_id=None):
+    """Get timeline data for a specific camera and date"""
     try:
-        today = datetime.now().strftime('%Y-%m-%d')
-
-        # List today's images for specific camera
-        today_folder = os.path.join(UPLOAD_FOLDER, camera_id, 'images', today)
+        date = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
         
-        if not os.path.exists(today_folder):
-            return jsonify({'camera_id': camera_id, 'count': 0, 'images': []})
+        # List images for specific camera and date
+        images_folder = os.path.join(UPLOAD_FOLDER, camera_id, 'images', date)
+        
+        if not os.path.exists(images_folder):
+            return jsonify({'camera_id': camera_id, 'date': date, 'count': 0, 'images': []})
         
         files = sorted(
-            Path(today_folder).glob('*.jpg'),
+            Path(images_folder).glob('*.jpg'),
             key=lambda x: x.stat().st_mtime,
             reverse=False
         )
@@ -319,26 +320,30 @@ def timeline(camera_id=None):
         for f in files:
             stat = f.stat()
             image_list.append({
-                'src': f'/uploads/{camera_id}/{f.name}',
+                'src': f'/uploads/{camera_id}/{f.name}?date={date}',
                 'filename': f.name,
                 'size': stat.st_size,
                 'timestamp': datetime.fromtimestamp(stat.st_mtime).strftime('%H:%M:%S')
             })
-        image_list.append({
-            'src': f"http://{NETWORK_PREFIX}{camera_id}/stream",
-            'filename': f.name,
-            'size': 0,
-            'timestamp': f'now'
+        
+        # Add live stream as last image if requesting today
+        if date == datetime.now().strftime('%Y-%m-%d'):
+            image_list.append({
+                'src': f"http://{NETWORK_PREFIX}{camera_id}/stream",
+                'filename': 'stream',
+                'size': 0,
+                'timestamp': 'now'
+            })
+        
+        return jsonify({
+            'camera_id': camera_id,
+            'date': date,
+            'count': len(image_list),
+            'images': image_list,
+            'stream_url': f"http://{NETWORK_PREFIX}{camera_id}/stream"
         })
-        return render_template('timeline.html', images=image_list, camera_id=camera_id, stream_url=f"http://{NETWORK_PREFIX}{camera_id}/stream", date=today)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-    
-@app.route('/calendar/<camera_id>', methods=['GET'])
-def calendar(camera_id=None):
-    """Serve the calendar page"""
-    return render_template('calendar.html')
 
 @app.route('/camera/<camera_id>/led', methods=['GET'])
 def control_led(camera_id):
