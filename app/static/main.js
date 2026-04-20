@@ -12,6 +12,54 @@ async function toggleLED(cameraId, event) {
         });
     loadStream(streamImg);
 }
+
+// Calendar functions
+function showCalendar(cameraId, event) {
+    if (event) event.stopPropagation();
+    const calendarElement = document.getElementById(`calendar-${cameraId}`);
+    calendarElement.style.display = 'block';
+    
+    // Initialize calendar for this camera if not already done
+    if (!window.calendarInstances) window.calendarInstances = {};
+    if (!window.calendarInstances[cameraId]) {
+        window.calendarInstances[cameraId] = new CalendarInstance(cameraId);
+    }
+    window.calendarInstances[cameraId].render();
+}
+
+function hideCalendar(cameraId) {
+    const calendarElement = document.getElementById(`calendar-${cameraId}`);
+    calendarElement.style.display = 'none';
+}
+
+function navigateMonth(cameraId, direction) {
+    if (window.calendarInstances && window.calendarInstances[cameraId]) {
+        window.calendarInstances[cameraId].changeMonth(direction);
+    }
+}
+
+// Timeline functions
+function showTimeline(cameraId) {
+    const overlay = document.getElementById('timelineOverlay');
+    overlay.style.display = 'flex';
+    
+    // Initialize timeline
+    if (!window.timelineInstance) {
+        window.timelineInstance = new TimelineInstance();
+    }
+    window.timelineInstance.load(cameraId);
+}
+
+function hideTimeline() {
+    const overlay = document.getElementById('timelineOverlay');
+    overlay.style.display = 'none';
+    
+    // Clean up timeline
+    if (window.timelineInstance) {
+        window.timelineInstance.cleanup();
+    }
+}
+
 function init() {
     const streamImages = document.querySelectorAll('.camera-stream');
     streamImages.forEach(img => {
@@ -29,6 +77,7 @@ function loadStream(img) {
     };
     img.src = streamUrl;
 }
+
 function getCameraStats() {
     fetch('/stats').then(response => response.json())
         .then(data => {
@@ -45,6 +94,7 @@ function getCameraStats() {
             console.error('Error fetching camera stats:', error);
         });
 }
+
 setTimeout(() => {
     init();
     setInterval(getCameraStats, 10000);

@@ -4,7 +4,7 @@ ESP32-CAM Image Upload Server
 Receives and saves images from ESP32 camera
 """
 
-from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from datetime import datetime, timedelta
 import os
 from pathlib import Path
@@ -148,7 +148,7 @@ def generate_daily_video(camera_id, date_str):
         # Clean up temporary directory
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
-            print(f"✓ Cleaned up temporary directory")
+            print("✓ Cleaned up temporary directory")
         
         if result.returncode == 0:
             print(f"✓ Generated video: {output_video}")
@@ -297,10 +297,10 @@ def index():
     return render_template('index.html', cameras=get_cameras())
 
 
-@app.route('/timeline/<camera_id>', methods=['GET'])
-@app.route('/timeline/<camera_id>/<int:batch>', methods=['GET'])
-def timeline(camera_id=None, batch=None):
-    """Serve the timeline frontend"""
+@app.route('/api/timeline/<camera_id>', methods=['GET'])
+@app.route('/api/timeline/<camera_id>/<int:batch>', methods=['GET'])
+def get_timeline_data(camera_id=None, batch=None):
+    """Get timeline data as JSON"""
     try:
         today = datetime.now().strftime('%Y-%m-%d')
 
@@ -308,7 +308,7 @@ def timeline(camera_id=None, batch=None):
         today_folder = os.path.join(UPLOAD_FOLDER, camera_id, 'images', today)
         
         if not os.path.exists(today_folder):
-            return jsonify({'camera_id': camera_id, 'count': 0, 'images': []})
+            return jsonify({'camera_id': camera_id, 'count': 0, 'images': [], 'batches': []})
         
         files = sorted(
             Path(today_folder).glob('*.jpg'),
@@ -363,21 +363,22 @@ def timeline(camera_id=None, batch=None):
                 
                 batches.append({
                     'name': batch_name,
-                    'url': f'/timeline/{camera_id}/{i}',
+                    'batch': i,
                     'active': i == current_batch
                 })
         
-        return render_template('timeline.html', images=image_list, camera_id=camera_id, 
-                             stream_url=f"http://{NETWORK_PREFIX}{camera_id}/stream", 
-                             date=today, batches=batches)
+        return jsonify({
+            'camera_id': camera_id,
+            'images': image_list,
+            'stream_url': f"http://{NETWORK_PREFIX}{camera_id}/stream",
+            'date': today,
+            'batches': batches,
+            'current_batch': current_batch
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-    
-@app.route('/calendar/<camera_id>', methods=['GET'])
-def calendar(camera_id=None):
-    """Serve the calendar page"""
-    return render_template('calendar.html')
+
 
 @app.route('/camera/<camera_id>/led', methods=['GET'])
 def control_led(camera_id):
