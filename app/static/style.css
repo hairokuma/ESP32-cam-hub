@@ -31,6 +31,8 @@ body {
     background: #2d2d2d;
     border-radius: .5rem;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
     position: relative;
 }
 
@@ -40,6 +42,7 @@ body {
     color: #aaa;
     text-decoration: none;
 }
+
 .camera-header,
 .camera-status {
     padding: .5rem;
@@ -47,7 +50,8 @@ body {
     justify-content: space-between;
     align-items: center;
 }
-.stats{
+
+.stats {
     position: absolute;
     bottom: 0;
     left: 0;
@@ -90,153 +94,70 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.95);
+    background: #000;
     z-index: 1000;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    padding: 2rem;
 }
 
-/* Shared close button for all modals */
-.modal-overlay .close-btn {
+.modal-overlay .btn {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.6);
+    background: #000;
     border: 2px solid rgba(255, 255, 255, 0.3);
     color: white;
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     cursor: pointer;
     transition: all 0.3s;
-    z-index: 1001;
-    opacity: 1;
     font-size: 24px;
-    text-decoration: none;
 }
 
-.modal-overlay .close-btn:hover {
+.modal-overlay .btn:hover {
     background: rgba(76, 175, 80, 0.8);
     border-color: #4CAF50;
-    transform: scale(1.1);
 }
 
-/* Timeline modal specific styles */
-#timelineModal {
-    background: #000;
+.btn-close {
+    top: 0px;
+    right: 0px;
 }
 
-#timelineModal .close-btn {
-    transform: none;
+.btn-prev {
+    left: 0px;
 }
 
-/* Video modal specific styles */
-#videoModal {
-    background: rgba(0, 0, 0, 0.9);
+.btn-next {
+    right: 0px;
 }
 
-#videoModal > div {
-    max-width: 90%;
-    max-height: 90%;
-}
-
-#videoModal video {
-    border-radius: 1%;
-    width: 100%;
-    max-height: 80vh;
-}
-
-.video-info {
-    display: flex;
-    justify-content: space-between;
-    color: white;
-    padding: 1rem;
-    background: rgba(0, 0, 0, 0.5);
-}
-
-/* Calendar modal specific styles */
-.calendar-modal-content {
-    background: #1a1a1a;
-    padding: 2rem;
-    border-radius: 12px;
-    max-width: 800px;
-    width: 90%;
-    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
-}
-
-
-/* Timeline-specific styles */
-
-.media-container {
-    flex: 1;
-    position: relative;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.media-container img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-}
-
-.nav-arrow {
-    position: absolute;
+.btn-prev,
+.btn-next {
     top: 50%;
     transform: translateY(-50%);
-    background: rgba(0, 0, 0, 0.6);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
+}
+
+.modal-content {
     display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    position: relative;
     align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s;
-    z-index: 10;
-    opacity: 0;
 }
 
-.media-container:hover .nav-arrow {
-    opacity: 1;
-}
-
-.nav-arrow:hover {
-    background: rgba(76, 175, 80, 0.8);
-    border-color: #4CAF50;
-    transform: translateY(-50%) scale(1.1);
-}
-
-.nav-arrow:active {
-    transform: translateY(-50%) scale(0.95);
-}
-
-.nav-arrow-left {
-    left: 20px;
-}
-
-.nav-arrow-right {
-    right: 20px;
-}
-
+/* Timeline-specific styles */
 .timeline-container {
     background: #2d2d2d;
     border-radius: 8px;
-    max-height: 220px;
     display: flex;
     flex-direction: column;
     padding: 1rem;
-    margin: 1rem;
-    gap: .5rem;
+    gap: 1rem;
+    width:100%;
 }
 
 .timeline {
@@ -262,20 +183,12 @@ body {
     background: #1a1a1a;
 }
 
+.timeline-item.timeline-item-dummy,
 .timeline-item:hover {
     border-color: #4CAF50;
     transform: scale(1.05);
     box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
     z-index: 10;
-}
-
-
-/* .timeline-item.active { */
-.timeline-item.timeline-item-dummy {
-    border-color: #4CAF50;
-    box-shadow: 0 4px 16px rgba(76, 175, 80, 0.6);
-    transform: scale(1.05);
-    z-index: 20;
 }
 
 .timeline-item img {
@@ -293,7 +206,6 @@ body {
     color: #aaa;
 }
 
-/* .timeline-item.active .timestamp { */
 .timeline-item.timeline-item-dummy .timestamp {
     background: rgba(76, 175, 80, 0.9);
     color: white;
@@ -302,8 +214,7 @@ body {
 
 .active {
     position: absolute;
-    top: 50%;
-    transform: translateY(calc(-50% - 100px));
+    top: 2rem;
     left: 0;
     align-items: center;
     display: flex;
@@ -313,26 +224,39 @@ body {
     z-index: -1;
 }
 
-.active img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    width: auto;
-    height: auto;
+.batch-container {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #888;
+    gap: 10px;
 }
 
-.active .timestamp {
+.batch-item {
+    color: #4CAF50;
+    background: rgba(76, 175, 80, 0.15);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    flex: 1;
     text-align: center;
+    text-decoration: none;
+    padding: 3px;
+    border-radius: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
+.batch-item[data-active="true"] {
+    font-weight: bold;
+    background: rgba(76, 175, 80, 0.3);
+    border-color: rgba(76, 175, 80, 0.5);
+}
+.batch-item[data-active="true"],
+.batch-item:hover {
+    box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.3);
+}
 
 /* Time Scrubber */
-.time-scrubber {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem
-}
-
 .scrubber-track {
     height: 6px;
     background: linear-gradient(to right, #1a1a1a 0%, #4CAF50 100%);
@@ -384,7 +308,7 @@ body {
     color: white;
     padding: 8px 14px;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: bold;
     white-space: nowrap;
     pointer-events: none;
@@ -410,87 +334,23 @@ body {
     transform: translateX(-50%) translateY(0);
 }
 
-
-.batch-container,
-.scrubber-labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 11px;
-    color: #888;
-    gap: 10px;
-}
-
-.batch-item,
-.scrubber-label {
-    padding: 3px 8px;
+/* Calendar modal specific styles */
+.calendar {
     background: #1a1a1a;
-    border-radius: 3px;
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    padding: 2rem;
+    border-radius: 12px;
+    max-width: 800px;
+    width: 90%;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
 }
-
-.batch-item,
-.scrubber-current {
-    color: #4CAF50;
-    font-weight: bold;
-    background: rgba(76, 175, 80, 0.15);
-    border: 1px solid rgba(76, 175, 80, 0.3);
-    flex: 1;
-    text-align: center;
-    text-decoration: none;
-}
-
-.batch-item[data-active="True"] {
-    background: rgba(76, 175, 80, 0.3);
-    border-color: rgba(76, 175, 80, 0.5);
-    box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.3);
-}
-
-.batch-item:hover {
-    box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.3);
-}
-
-
-/* Calendar Modal Styles */
 
 .calendar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
-    gap: 1rem;
-}
-
-.calendar-header h2 {
-    flex: 1;
-    text-align: center;
-    margin: 0;
-    font-size: 1.8rem;
-    color: #fff;
-}
-
-.nav-btn {
-    background: #4CAF50;
-    border: none;
-    color: white;
-    font-size: 24px;
-    padding: 12px 24px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-    min-width: 50px;
-}
-
-.nav-btn:hover {
-    background: #45a049;
-    transform: scale(1.05);
-}
-
-.nav-btn:active {
-    transform: scale(0.95);
 }
 
 .calendar-grid {
@@ -504,8 +364,7 @@ body {
     font-weight: bold;
     padding: 15px;
     background: #2d2d2d;
-    border-radius: 4px;
-    font-size: 14px;
+    border-radius: 8px;
     color: #4CAF50;
 }
 
@@ -517,7 +376,6 @@ body {
     background: #2d2d2d;
     border-radius: 8px;
     cursor: default;
-    font-size: 18px;
     position: relative;
     transition: all 0.2s;
     border: 2px solid transparent;
@@ -565,8 +423,4 @@ body {
     right: 5px;
     font-size: 12px;
     opacity: 0.7;
-}
-
-.empty-day {
-    background: transparent;
 }

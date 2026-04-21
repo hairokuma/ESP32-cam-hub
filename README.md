@@ -196,3 +196,6 @@ Built with:
 - Flask (Python)
 - Vanilla JavaScript
 - FreeRTOS
+
+
+<!-- 192.168.2.202/stream:1  GET http://192.168.2.202/stream net::ERR_INCOMPLETE_CHUNKED_ENCODING 200 (OK) -->

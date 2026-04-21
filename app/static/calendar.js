@@ -123,20 +123,17 @@ class CalendarInstance {
     }
 }
 
+
+function closeVideoModal() {
+    videoModal.style.display = 'none';
+    videoPlayer.pause();
+    videoSource.src = '';
+}
 // Video modal controls (shared across all calendar instances)
 document.addEventListener('DOMContentLoaded', () => {
     const videoModal = document.getElementById('videoModal');
     const videoPlayer = document.getElementById('videoPlayer');
     const videoSource = document.getElementById('videoSource');
-    const closeButton = document.getElementById('closeVideo');
-
-    function closeVideoModal() {
-        videoModal.style.display = 'none';
-        videoPlayer.pause();
-        videoSource.src = '';
-    }
-
-    closeButton.addEventListener('click', closeVideoModal);
 
     videoModal.addEventListener('click', (e) => {
         if (e.target.id === 'videoModal') {

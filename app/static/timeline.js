@@ -12,7 +12,6 @@ class TimelineInstance {
         this.timeline = document.getElementById('timeline');
         this.scrubberTrack = document.getElementById('scrubberTrack');
         this.scrubberBar = document.getElementById('scrubberBar');
-        this.scrubberTime = document.getElementById('scrubberTime');
         this.scrubberTooltip = document.getElementById('scrubberTooltip');
         this.batchContainer = document.getElementById('batchContainer');
         
@@ -75,13 +74,7 @@ class TimelineInstance {
             item.appendChild(timestamp);
             this.timeline.appendChild(item);
         });
-        
-        // Update scrubber labels
-        if (this.images.length > 0) {
-            document.getElementById('scrubberStart').textContent = this.images[0].timestamp;
-            document.getElementById('scrubberEnd').textContent = this.images[this.images.length - 1].timestamp;
-        }
-        
+                
         // Scroll to end and display last image
         this.timeline.scrollLeft = this.timeline.scrollWidth;
         this.initializeLazyLoading();
@@ -141,7 +134,7 @@ class TimelineInstance {
         this.timeline.insertBefore(dummy, activeItem);
         activeItem.classList.add('active');
         activeItem.classList.remove('timeline-item');
-        this.scrubberTime.textContent = timestamp;
+        this.scrubberTooltip.textContent = timestamp;
 
         if (scroll) {
             dummy.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });

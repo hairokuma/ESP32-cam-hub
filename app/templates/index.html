@@ -37,32 +37,17 @@
 
   <!-- Timeline Modal Overlay -->
   <div class="modal-overlay" id="timelineModal" style="display: none;">
-    <button class="close-btn" onclick="hideTimeline()">&times;</button>
-    <div class="media-container">
-      <button class="nav-arrow nav-arrow-left" id="prevImage" title="Previous (←)">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-      </button>
-      <button class="nav-arrow nav-arrow-right" id="nextImage" title="Next (→)">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="9 18 15 12 9 6"></polyline>
-        </svg>
-      </button>
+    <div class="modal-content">
+      <button class="btn btn-close" onclick="hideTimeline()">&times;</button>
+      <button class="btn btn-prev" id="prevImage">‹</button>
+      <button class="btn btn-next" id="nextImage">›</button>
     </div>
     <div class="timeline-container">
-      <div class="time-scrubber" id="timeScrubber">
-        <div class="batch-container" id="batchContainer">
-        </div>
-        <div class="scrubber-track" id="scrubberTrack">
-          <div class="scrubber-bar" id="scrubberBar">
-            <div class="scrubber-tooltip" id="scrubberTooltip"></div>
-          </div>
-        </div>
-        <div class="scrubber-labels">
-          <span class="scrubber-label" id="scrubberStart"></span>
-          <span class="scrubber-label scrubber-current" id="scrubberTime"></span>
-          <span class="scrubber-label" id="scrubberEnd"></span>
+      <div class="batch-container" id="batchContainer">
+      </div>
+      <div class="scrubber-track" id="scrubberTrack">
+        <div class="scrubber-bar" id="scrubberBar">
+          <div class="scrubber-tooltip" id="scrubberTooltip"></div>
         </div>
       </div>
       <div class="timeline" id="timeline">
@@ -72,29 +57,34 @@
 
   <!-- Calendar Modal -->
   <div class="modal-overlay" id="calendarModal" style="display: none;">
-    <div class="calendar-modal-content">
-      <div class="calendar-header">
-        <button class="nav-btn" onclick="navigateMonth(-1)">‹</button>
-        <h2 class="current-month"></h2>
-        <button class="nav-btn" onclick="navigateMonth(1)">›</button>
+    <div class="modal-content">
+      <button class="btn btn-close" onclick="hideCalendar()">&times;</button>
+      <button class="btn btn-prev" onclick="navigateMonth(-1)">‹</button>
+      <button class="btn btn-next" onclick="navigateMonth(1)">›</button>
+      <div class="calendar">
+        <div class="calendar-header">
+          <h2 class="current-month"></h2>
+          <button onclick="goToToday()">Heute</button>
+        </div>
+        <div class="calendar-grid">
+          <div class="day-name">Mo</div>
+          <div class="day-name">Di</div>
+          <div class="day-name">Mi</div>
+          <div class="day-name">Do</div>
+          <div class="day-name">Fr</div>
+          <div class="day-name">Sa</div>
+          <div class="day-name">So</div>
+        </div>
       </div>
-      <div class="calendar-grid">
-        <div class="day-name">Mo</div>
-        <div class="day-name">Di</div>
-        <div class="day-name">Mi</div>
-        <div class="day-name">Do</div>
-        <div class="day-name">Fr</div>
-        <div class="day-name">Sa</div>
-        <div class="day-name">So</div>
-      </div>
-      <button class="close-btn" onclick="hideCalendar()">&times;</button>
     </div>
   </div>
 
   <!-- Video Modal -->
   <div class="modal-overlay" id="videoModal" style="display: none;">
-    <button class="close-btn" id="closeVideo">&times;</button>
-    <div>
+    <div class="modal-content">
+      <button class="btn btn-close" onclick="closeVideoModal()">&times;</button>
+      <button class="btn btn-prev" onclick="navigateMonth(-1)">‹</button>
+      <button class="btn btn-next" onclick="navigateMonth(1)">›</button>
       <video id="videoPlayer" controls>
         <source id="videoSource" type="video/mp4">
         Your browser does not support the video tag.
@@ -103,6 +93,7 @@
         <span id="videoDate"></span>
         <span id="videoSize"></span>
       </div>
+    <div>
     </div>
   </div>
 
