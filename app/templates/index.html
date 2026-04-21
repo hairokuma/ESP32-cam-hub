@@ -6,8 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ESP32-CAM Multi-Camera View</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="calendar.css">
-  <link rel="stylesheet" href="timeline.css">
 </head>
 
 <body>
@@ -33,25 +31,6 @@
       <span class="stats">
         {{ camera.imageCount }} images captured - Latest:{{ camera.latestTime}}
       </span>
-      
-      <!-- Calendar container (hidden by default) -->
-      <div class="calendar-inline" id="calendar-{{ camera.id }}" style="display: none;">
-        <div class="calendar-header-inline">
-          <button class="nav-btn" onclick="navigateMonth('{{ camera.id }}', -1)">‹</button>
-          <h3 class="current-month"></h3>
-          <button class="nav-btn" onclick="navigateMonth('{{ camera.id }}', 1)">›</button>
-          <button class="close-calendar-btn" onclick="hideCalendar('{{ camera.id }}')">&times;</button>
-        </div>
-        <div class="calendar-grid-inline">
-          <div class="day-name">Mo</div>
-          <div class="day-name">Di</div>
-          <div class="day-name">Mi</div>
-          <div class="day-name">Do</div>
-          <div class="day-name">Fr</div>
-          <div class="day-name">Sa</div>
-          <div class="day-name">So</div>
-        </div>
-      </div>
     </div>
     {% endfor %}
   </div>
@@ -88,6 +67,27 @@
       </div>
       <div class="timeline" id="timeline">
       </div>
+    </div>
+  </div>
+
+  <!-- Calendar Modal -->
+  <div class="modal-overlay" id="calendarModal" style="display: none;">
+    <div class="calendar-modal-content">
+      <div class="calendar-header">
+        <button class="nav-btn" onclick="navigateMonth(-1)">‹</button>
+        <h2 class="current-month"></h2>
+        <button class="nav-btn" onclick="navigateMonth(1)">›</button>
+      </div>
+      <div class="calendar-grid">
+        <div class="day-name">Mo</div>
+        <div class="day-name">Di</div>
+        <div class="day-name">Mi</div>
+        <div class="day-name">Do</div>
+        <div class="day-name">Fr</div>
+        <div class="day-name">Sa</div>
+        <div class="day-name">So</div>
+      </div>
+      <button class="close-btn" onclick="hideCalendar()">&times;</button>
     </div>
   </div>
 
