@@ -16,31 +16,34 @@ async function toggleLED(cameraId, event) {
 // Calendar functions
 function showCalendar(cameraId, event) {
     if (event) event.stopPropagation();
-    const calendarElement = document.getElementById(`calendar-${cameraId}`);
-    calendarElement.style.display = 'block';
     
-    // Initialize calendar for this camera if not already done
-    if (!window.calendarInstances) window.calendarInstances = {};
-    if (!window.calendarInstances[cameraId]) {
-        window.calendarInstances[cameraId] = new CalendarInstance(cameraId);
+    const modal = document.getElementById('calendarModal');
+    modal.style.display = 'flex';
+    
+    // Initialize calendar if not already done
+    if (!window.calendarInstance) {
+        window.calendarInstance = new CalendarInstance();
     }
-    window.calendarInstances[cameraId].render();
+    
+    // Reset to current date and load data for selected camera
+    window.calendarInstance.currentDate = new Date();
+    window.calendarInstance.loadVideoData(cameraId);
 }
 
-function hideCalendar(cameraId) {
-    const calendarElement = document.getElementById(`calendar-${cameraId}`);
-    calendarElement.style.display = 'none';
+function hideCalendar() {
+    const modal = document.getElementById('calendarModal');
+    modal.style.display = 'none';
 }
 
-function navigateMonth(cameraId, direction) {
-    if (window.calendarInstances && window.calendarInstances[cameraId]) {
-        window.calendarInstances[cameraId].changeMonth(direction);
+function navigateMonth(direction) {
+    if (window.calendarInstance) {
+        window.calendarInstance.changeMonth(direction);
     }
 }
 
 // Timeline functions
 function showTimeline(cameraId) {
-    const overlay = document.getElementById('timelineOverlay');
+    const overlay = document.getElementById('timelineModal');
     overlay.style.display = 'flex';
     
     // Initialize timeline
@@ -51,7 +54,7 @@ function showTimeline(cameraId) {
 }
 
 function hideTimeline() {
-    const overlay = document.getElementById('timelineOverlay');
+    const overlay = document.getElementById('timelineModal');
     overlay.style.display = 'none';
     
     // Clean up timeline
@@ -98,4 +101,38 @@ function getCameraStats() {
 setTimeout(() => {
     init();
     setInterval(getCameraStats, 10000);
+    
+    // Setup modal event listeners
+    setupModalHandlers();
 }, 100);
+
+// Setup modal close handlers
+function setupModalHandlers() {
+    const calendarModal = document.getElementById('calendarModal');
+    const timelineModal = document.getElementById('timelineModal');
+    
+    // Close calendar on outside click
+    calendarModal.addEventListener('click', (e) => {
+        if (e.target.id === 'calendarModal') {
+            hideCalendar();
+        }
+    });
+    
+    // Close timeline on outside click
+    timelineModal.addEventListener('click', (e) => {
+        if (e.target.id === 'timelineModal') {
+            hideTimeline();
+        }
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (calendarModal.style.display === 'flex') {
+                hideCalendar();
+            } else if (timelineModal.style.display === 'flex') {
+                hideTimeline();
+            }
+        }
+    });
+}

@@ -1,17 +1,17 @@
-// Calendar Instance Class for inline display
+// Calendar Modal Class
 class CalendarInstance {
-    constructor(cameraId) {
-        this.cameraId = cameraId;
+    constructor() {
+        this.cameraId = null;
         this.currentDate = new Date();
         this.videoDates = new Set();
         this.videoData = {};
-        this.container = document.getElementById(`calendar-${cameraId}`);
-        this.grid = this.container.querySelector('.calendar-grid-inline');
-        
-        this.loadVideoData();
+        this.modal = document.getElementById('calendarModal');
+        this.grid = this.modal.querySelector('.calendar-grid');
     }
 
-    async loadVideoData() {
+    async loadVideoData(cameraId) {
+        this.cameraId = cameraId;
+        
         try {
             const response = await fetch(`/api/calendar/${this.cameraId}`);
             const data = await response.json();
@@ -45,7 +45,7 @@ class CalendarInstance {
         // Update header
         const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
             'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-        this.container.querySelector('.current-month').textContent = `${monthNames[month]} ${year}`;
+        this.modal.querySelector('.current-month').textContent = `${monthNames[month]} ${year}`;
 
         // Get first day of month and number of days
         const firstDay = new Date(year, month, 1);
@@ -101,7 +101,7 @@ class CalendarInstance {
         const video = this.videoData[dateStr];
         if (!video) return;
 
-        const modal = document.getElementById('videoModal');
+        const videoModal = document.getElementById('videoModal');
         const videoSource = document.getElementById('videoSource');
         const videoPlayer = document.getElementById('videoPlayer');
 
@@ -113,7 +113,10 @@ class CalendarInstance {
         const germanDate = `${day}.${month}.${year}`;
         document.getElementById('videoDate').textContent = `Datum: ${germanDate}`;
         document.getElementById('videoSize').textContent = `Größe: ${video.size_mb} MB`;
-        modal.classList.add('active');
+        
+        // Hide calendar modal and show video modal
+        this.modal.style.display = 'none';
+        videoModal.style.display = 'flex';
 
         // Auto play
         videoPlayer.play();
@@ -122,28 +125,30 @@ class CalendarInstance {
 
 // Video modal controls (shared across all calendar instances)
 document.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById('videoModal');
+    const videoModal = document.getElementById('videoModal');
     const videoPlayer = document.getElementById('videoPlayer');
     const videoSource = document.getElementById('videoSource');
     const closeButton = document.getElementById('closeVideo');
 
     function closeVideoModal() {
-        modal.classList.remove('active');
+        videoModal.style.display = 'none';
         videoPlayer.pause();
         videoSource.src = '';
     }
 
     closeButton.addEventListener('click', closeVideoModal);
 
-    modal.addEventListener('click', (e) => {
+    videoModal.addEventListener('click', (e) => {
         if (e.target.id === 'videoModal') {
             closeVideoModal();
         }
     });
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.classList.contains('active')) {
-            closeVideoModal();
+        if (e.key === 'Escape') {
+            if (videoModal.style.display === 'flex') {
+                closeVideoModal();
+            }
         }
     });
 });

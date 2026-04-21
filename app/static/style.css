@@ -83,139 +83,90 @@ body {
     text-align: center;
 }
 
-/* Inline Calendar Styles */
-.calendar-inline {
-    background: #1a1a1a;
-    padding: 1rem;
-    border-radius: 8px;
-    margin: 1rem;
-}
-
-.calendar-header-inline {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    gap: 0.5rem;
-}
-
-.calendar-header-inline h3 {
-    flex: 1;
-    text-align: center;
-    margin: 0;
-    font-size: 1.1rem;
-}
-
-.calendar-header-inline .nav-btn {
-    background: #4CAF50;
-    border: none;
-    color: white;
-    font-size: 18px;
-    padding: 6px 14px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.calendar-header-inline .nav-btn:hover {
-    background: #45a049;
-    transform: scale(1.05);
-}
-
-.close-calendar-btn {
-    background: rgba(255, 0, 0, 0.6);
-    border: none;
-    color: white;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 20px;
-    transition: all 0.2s;
-}
-
-.close-calendar-btn:hover {
-    background: rgba(255, 0, 0, 0.8);
-    transform: scale(1.1);
-}
-
-.calendar-grid-inline {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 0.3rem;
-}
-
-.calendar-grid-inline .day-name {
-    text-align: center;
-    font-weight: bold;
-    padding: 8px;
-    background: #2d2d2d;
-    border-radius: 4px;
-    font-size: 12px;
-    color: #4CAF50;
-}
-
-.calendar-grid-inline .calendar-day {
-    aspect-ratio: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #2d2d2d;
-    border-radius: 6px;
-    cursor: default;
-    font-size: 14px;
-    position: relative;
-    transition: all 0.2s;
-    border: 2px solid transparent;
-    padding: 4px;
-}
-
-.calendar-grid-inline .calendar-day.today {
-    border-color: #2196F3;
-    box-shadow: 0 0 8px rgba(33, 150, 243, 0.5);
-}
-
-.calendar-grid-inline .calendar-day.has-video {
-    background: linear-gradient(135deg, #4CAF50 0%, #2d8f35 100%);
-    cursor: pointer;
-    font-weight: bold;
-}
-
-.calendar-grid-inline .calendar-day.has-video:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
-}
-
-.calendar-grid-inline .calendar-day.has-video::after {
-    content: '▶';
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    font-size: 10px;
-    opacity: 0.7;
-}
-
-.calendar-grid-inline .empty-day {
-    background: transparent;
-}
-
-/* Timeline Overlay Styles */
-.timeline-overlay {
+/* Shared Modal Overlay Styles */
+.modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: #000;
+    background: rgba(0, 0, 0, 0.95);
     z-index: 1000;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
-.timeline-overlay .close-btn {
+/* Shared close button for all modals */
+.modal-overlay .close-btn {
     position: absolute;
     top: 20px;
     right: 20px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    z-index: 1001;
     opacity: 1;
-    transform: translateY(0);
+    font-size: 24px;
+    text-decoration: none;
 }
+
+.modal-overlay .close-btn:hover {
+    background: rgba(76, 175, 80, 0.8);
+    border-color: #4CAF50;
+    transform: scale(1.1);
+}
+
+/* Timeline modal specific styles */
+#timelineModal {
+    background: #000;
+}
+
+#timelineModal .close-btn {
+    transform: none;
+}
+
+/* Video modal specific styles */
+#videoModal {
+    background: rgba(0, 0, 0, 0.9);
+}
+
+#videoModal > div {
+    max-width: 90%;
+    max-height: 90%;
+}
+
+#videoModal video {
+    border-radius: 1%;
+    width: 100%;
+    max-height: 80vh;
+}
+
+.video-info {
+    display: flex;
+    justify-content: space-between;
+    color: white;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+/* Calendar modal specific styles */
+.calendar-modal-content {
+    background: #1a1a1a;
+    padding: 2rem;
+    border-radius: 12px;
+    max-width: 800px;
+    width: 90%;
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+}
+
+

@@ -189,7 +189,7 @@ class TimelineInstance {
 
         // Keyboard navigation
         const handleKeyboard = (e) => {
-            if (document.getElementById('timelineOverlay').style.display !== 'flex') return;
+            if (document.getElementById('timelineModal').style.display !== 'flex') return;
             
             if (e.key === 'ArrowLeft') {
                 e.preventDefault();

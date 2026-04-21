@@ -1,21 +1,12 @@
-html,
-body {
-    margin: 0;
-    height: 100%;
-    overflow: hidden;
-}
-
-body {
-    background: #000;
-    color: #fff;
-    font-family: Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-}
+/* Timeline-specific styles */
 
 .media-container {
     flex: 1;
     position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .media-container img {
@@ -24,8 +15,7 @@ body {
     object-fit: contain;
 }
 
-.nav-arrow,
-.close-btn {
+.nav-arrow {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
@@ -42,20 +32,13 @@ body {
     transition: all 0.3s;
     z-index: 10;
     opacity: 0;
-    text-decoration: none;
 }
 
 .media-container:hover .nav-arrow {
     opacity: 1;
 }
 
-.close-btn {
-    opacity: 1;
-    top: 50px;
-}
-
-.nav-arrow:hover,
-.close-btn:hover {
+.nav-arrow:hover {
     background: rgba(76, 175, 80, 0.8);
     border-color: #4CAF50;
     transform: translateY(-50%) scale(1.1);
@@ -69,8 +52,7 @@ body {
     left: 20px;
 }
 
-.nav-arrow-right,
-.close-btn {
+.nav-arrow-right {
     right: 20px;
 }
 
