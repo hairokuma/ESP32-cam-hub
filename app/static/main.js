@@ -16,15 +16,15 @@ async function toggleLED(cameraId, event) {
 // Calendar functions
 function showCalendar(cameraId, event) {
     if (event) event.stopPropagation();
-    
+    unloadStream(); // Stop stream while calendar is open
     const modal = document.getElementById('calendarModal');
     modal.style.display = 'flex';
-    
+
     // Initialize calendar if not already done
     if (!window.calendarInstance) {
         window.calendarInstance = new CalendarInstance();
     }
-    
+
     // Reset to current date and load data for selected camera
     window.calendarInstance.currentDate = new Date();
     window.calendarInstance.loadVideoData(cameraId);
@@ -33,6 +33,7 @@ function showCalendar(cameraId, event) {
 function hideCalendar() {
     const modal = document.getElementById('calendarModal');
     modal.style.display = 'none';
+    loadStream(); // Restart stream when calendar is closed
 }
 
 function navigateMonth(direction) {
@@ -43,9 +44,10 @@ function navigateMonth(direction) {
 
 // Timeline functions
 function showTimeline(cameraId) {
+    unloadStream(); // Stop stream while timeline is open
     const overlay = document.getElementById('timelineModal');
     overlay.style.display = 'flex';
-    
+
     // Initialize timeline
     if (!window.timelineInstance) {
         window.timelineInstance = new TimelineInstance();
@@ -56,29 +58,35 @@ function showTimeline(cameraId) {
 function hideTimeline() {
     const overlay = document.getElementById('timelineModal');
     overlay.style.display = 'none';
-    
+
     // Clean up timeline
     if (window.timelineInstance) {
         window.timelineInstance.cleanup();
     }
-}
-
-function init() {
-    const streamImages = document.querySelectorAll('.camera-stream');
-    streamImages.forEach(img => {
-        loadStream(img);
-    });
+    loadStream(); // Restart stream when timeline is closed
 }
 
 function loadStream(img) {
-    const streamUrl = img.dataset.streamUrl;
-    const overlay = img.parentElement.querySelector('.stream-overlay');
-    overlay.textContent = 'Loading stream…';
-    if (!streamUrl) return;
-    img.onerror = () => {
-        overlay.textContent = 'Failed to load stream';
-    };
-    img.src = streamUrl;
+    const streamImages = document.querySelectorAll('.camera-stream');
+    streamImages.forEach(img => {
+        const streamUrl = img.dataset.streamUrl;
+        const overlay = img.parentElement.querySelector('.stream-overlay');
+        overlay.textContent = 'Loading stream…';
+        if (!streamUrl) return;
+        img.onerror = () => {
+            overlay.textContent = 'Failed to load stream';
+        };
+        img.src = streamUrl;
+    });
+}
+
+function unloadStream(img) {
+    const streamImages = document.querySelectorAll('.camera-stream');
+    streamImages.forEach(img => {
+        img.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a88%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E';
+        const overlay = img.parentElement.querySelector('.stream-overlay');
+        overlay.textContent = 'Stream stopped';
+    });
 }
 
 function getCameraStats() {
@@ -99,9 +107,9 @@ function getCameraStats() {
 }
 
 setTimeout(() => {
-    init();
+    loadStream();
     setInterval(getCameraStats, 10000);
-    
+
     // Setup modal event listeners
     setupModalHandlers();
 }, 100);
@@ -110,21 +118,21 @@ setTimeout(() => {
 function setupModalHandlers() {
     const calendarModal = document.getElementById('calendarModal');
     const timelineModal = document.getElementById('timelineModal');
-    
+
     // Close calendar on outside click
     calendarModal.addEventListener('click', (e) => {
         if (e.target.id === 'calendarModal') {
             hideCalendar();
         }
     });
-    
+
     // Close timeline on outside click
     timelineModal.addEventListener('click', (e) => {
         if (e.target.id === 'timelineModal') {
             hideTimeline();
         }
     });
-    
+
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {

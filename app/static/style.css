@@ -223,6 +223,11 @@ body {
     width: 100%;
     z-index: -1;
 }
+.active img{
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+}
 
 .batch-container {
     display: flex;
