@@ -113,7 +113,7 @@ class TimelineInstance {
 
     const maxScroll = this.timeline.scrollWidth - this.timeline.clientWidth;
     const pct = maxScroll > 0 ? this.timeline.scrollLeft / maxScroll : 0;
-    this.scrubberBar.style.left = `calc(${pct * 100}% - 0.5rem)`;
+    this.scrubberBar.style.left = `calc(${pct * 100}% - 0.375rem)`;
   }
 
   handleTimelineScroll() {

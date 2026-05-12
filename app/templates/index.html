@@ -34,9 +34,10 @@
 
   <dialog id="timelineDialog">
     <button class="btn-close" onclick="closeCurrentView()">&#10005;</button>
-    <button class="btn-nav btn-prev" id="prevImage">&#8249;</button>
-    <button class="btn-nav btn-next" id="nextImage">&#8250;</button>
-    <div id="timelineActive" class="stage"></div>
+    <div id="timelineActive" class="stage">
+      <button class="btn-nav btn-prev" id="prevImage">&#8249;</button>
+      <button class="btn-nav btn-next" id="nextImage">&#8250;</button>
+    </div>
     <div class="timeline-container">
       <div class="batch-container" id="batchContainer"></div>
       <div class="scrubber-track" id="scrubberTrack">

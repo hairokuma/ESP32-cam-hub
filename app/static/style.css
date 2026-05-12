@@ -1,6 +1,6 @@
-*, *::before, *::after {
-  box-sizing: border-box;
-}
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { overflow-x: hidden; }
 
 body {
   font-family: 'Segoe UI', system-ui, sans-serif;
@@ -9,7 +9,9 @@ body {
   min-height: 100dvh;
 }
 
-/* ── Camera Grid ────────────────────────────────────────── */
+body:has(dialog[open]) { overflow: hidden; }
+
+/* ── Grid ───────────────────────────────────────────────── */
 
 #cameraGrid {
   display: grid;
@@ -28,7 +30,6 @@ body {
   display: flex;
   flex-direction: column;
   border: 1px solid #1a1a1a;
-  border-radius: 0.375rem;
   overflow: hidden;
 }
 
@@ -41,11 +42,7 @@ body {
   color: #888;
 }
 
-.camera-card header nav {
-  display: flex;
-  gap: 0.25rem;
-  margin-left: auto;
-}
+.camera-card header nav { display: flex; gap: 0.25rem; margin-left: auto; }
 
 .camera-card footer {
   padding: 0.375rem 0.75rem;
@@ -57,18 +54,12 @@ body {
 .status-dot {
   width: 0.4rem;
   height: 0.4rem;
-  border-radius: 50%;
   background: #333;
   flex-shrink: 0;
 }
-
 .status-dot[data-online="true"] { background: #fff; }
 
-/* ── Stream ─────────────────────────────────────────────── */
-
-.stream-wrap {
-  position: relative;
-}
+.stream-wrap { position: relative; }
 
 .stream-label {
   position: absolute;
@@ -97,50 +88,52 @@ button {
   border: 1px solid #2a2a2a;
   color: #fff;
   cursor: pointer;
-  border-radius: 0.25rem;
   padding: 0.25rem 0.6rem;
   font-size: 0.75rem;
   transition: background 0.15s, border-color 0.15s;
 }
 
-button:hover {
-  background: #333;
-  border-color: #444;
-}
+button:hover { background: #333; border-color: #444; }
 
-.btn-close {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 50%;
-  font-size: 0.9rem;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-}
-
+/* Close — anchored top-right corner with separator lines */
+.btn-close,
 .btn-nav {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 50%;
-  font-size: 1.5rem;
-  line-height: 1;
+  background: none;
+  border: none;
+  color: #444;
+  cursor: pointer;
   padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: color 0.15s;
   z-index: 10;
 }
 
-.btn-prev { left: 0.75rem; }
-.btn-next { right: 0.75rem; }
+.btn-close:hover,
+.btn-nav:hover { color: #fff; }
+
+.btn-close {
+  top: 0;
+  right: 0;
+  padding: 0.875rem 1.125rem;
+  font-size: 0.7rem;
+  line-height: 1;
+  border-left: 1px solid #1a1a1a;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+/* Nav arrows — full-height strips on stage sides */
+.btn-nav {
+  top: 0;
+  bottom: 0;
+  width: 3.5rem;
+  font-size: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-prev { left: 0; }
+.btn-next { right: 0; }
 
 /* ── Dialogs ────────────────────────────────────────────── */
 
@@ -156,15 +149,16 @@ dialog {
   max-height: 100dvh;
   display: none;
   flex-direction: column;
+  overflow: hidden;
 }
 
 dialog[open] { display: flex; }
-
 dialog::backdrop { background: #000; }
 
-/* ── Stage (timeline large view) ───────────────────────── */
+/* ── Stage ──────────────────────────────────────────────── */
 
 .stage {
+  position: relative;
   flex: 1;
   display: flex;
   align-items: center;
@@ -173,11 +167,7 @@ dialog::backdrop { background: #000; }
 }
 
 .stage img,
-.stage video {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
+.stage video { max-width: 100%; max-height: 100%; object-fit: contain; }
 
 /* ── Timeline ───────────────────────────────────────────── */
 
@@ -206,7 +196,6 @@ dialog::backdrop { background: #000; }
 .timeline-item {
   flex-shrink: 0;
   cursor: pointer;
-  border-radius: 0.2rem;
   overflow: hidden;
   border: 2px solid transparent;
   background: #111;
@@ -215,9 +204,7 @@ dialog::backdrop { background: #000; }
 
 .timeline-item:hover,
 .timeline-item.selected,
-.timeline-item.timeline-item-dummy {
-  border-color: #fff;
-}
+.timeline-item.timeline-item-dummy { border-color: #fff; }
 
 .timeline-item img {
   width: 7.5rem;
@@ -227,7 +214,7 @@ dialog::backdrop { background: #000; }
 }
 
 .timeline-item .timestamp {
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0,0,0,0.85);
   padding: 0.15rem 0.4rem;
   font-size: 0.6rem;
   text-align: center;
@@ -235,17 +222,11 @@ dialog::backdrop { background: #000; }
 }
 
 .timeline-item.selected .timestamp,
-.timeline-item.timeline-item-dummy .timestamp {
-  background: #222;
-  color: #fff;
-}
+.timeline-item.timeline-item-dummy .timestamp { background: #222; color: #fff; }
 
-/* ── Batch Navigation ───────────────────────────────────── */
+/* ── Batch Nav ──────────────────────────────────────────── */
 
-.batch-container {
-  display: flex;
-  gap: 0.4rem;
-}
+.batch-container { display: flex; gap: 0.4rem; }
 
 .batch-item {
   flex: 1;
@@ -253,7 +234,6 @@ dialog::backdrop { background: #000; }
   color: #555;
   background: #111;
   border: 1px solid #1a1a1a;
-  border-radius: 0.2rem;
   padding: 0.2rem 0.4rem;
   cursor: pointer;
   text-decoration: none;
@@ -265,18 +245,11 @@ dialog::backdrop { background: #000; }
 }
 
 .batch-item:hover,
-.batch-item[data-active="true"] {
-  background: #333;
-  color: #fff;
-  border-color: #444;
-}
+.batch-item[data-active="true"] { background: #333; color: #fff; border-color: #444; }
 
 /* ── Scrubber ───────────────────────────────────────────── */
 
 .scrubber-track {
-  height: 0.25rem;
-  background: #1a1a1a;
-  border-radius: 0.25rem;
   position: relative;
   cursor: pointer;
   padding: 0.6rem 0;
@@ -288,7 +261,6 @@ dialog::backdrop { background: #000; }
   position: absolute;
   inset: 0.475rem 0;
   background: #1a1a1a;
-  border-radius: 0.25rem;
   pointer-events: none;
 }
 
@@ -297,30 +269,24 @@ dialog::backdrop { background: #000; }
   top: 50%;
   transform: translateY(-50%);
   left: 0;
-  width: 1rem;
-  height: 1rem;
+  width: 0.75rem;
+  height: 0.75rem;
   background: #fff;
-  border-radius: 50%;
   cursor: grab;
-  transition: transform 0.1s;
   z-index: 1;
 }
 
 .scrubber-track.dragging .scrubber-bar,
-.scrubber-bar:active {
-  cursor: grabbing;
-  transform: translateY(-50%) scale(1.2);
-}
+.scrubber-bar:active { cursor: grabbing; }
 
 .scrubber-tooltip {
   position: absolute;
-  bottom: 1.5rem;
+  bottom: 1.25rem;
   left: 50%;
   transform: translateX(-50%);
   background: #222;
   color: #fff;
-  padding: 0.25rem 0.6rem;
-  border-radius: 0.2rem;
+  padding: 0.2rem 0.5rem;
   font-size: 0.65rem;
   white-space: nowrap;
   pointer-events: none;
@@ -329,16 +295,11 @@ dialog::backdrop { background: #000; }
 }
 
 .scrubber-track.dragging .scrubber-tooltip,
-.scrubber-bar:hover .scrubber-tooltip {
-  opacity: 1;
-}
+.scrubber-bar:hover .scrubber-tooltip { opacity: 1; }
 
-/* ── Calendar Dialog ────────────────────────────────────── */
+/* ── Calendar ───────────────────────────────────────────── */
 
-#calendarDialog {
-  align-items: center;
-  justify-content: center;
-}
+#calendarDialog { align-items: center; justify-content: center; }
 
 .calendar {
   display: flex;
@@ -347,22 +308,12 @@ dialog::backdrop { background: #000; }
   padding: 1.5rem;
   background: #0d0d0d;
   border: 1px solid #1a1a1a;
-  border-radius: 0.5rem;
   width: min(50rem, 92vw);
 }
 
-.calendar header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+.calendar header { display: flex; align-items: center; gap: 0.5rem; }
 
-.calendar header h2 {
-  flex: 1;
-  font-size: 1rem;
-  font-weight: 500;
-  text-align: center;
-}
+.calendar header h2 { flex: 1; font-size: 1rem; font-weight: 500; text-align: center; }
 
 .calendar-grid {
   display: grid;
@@ -370,12 +321,7 @@ dialog::backdrop { background: #000; }
   gap: 0.4rem;
 }
 
-.day-name {
-  text-align: center;
-  font-size: 0.7rem;
-  color: #444;
-  padding: 0.4rem 0;
-}
+.day-name { text-align: center; font-size: 0.7rem; color: #444; padding: 0.4rem 0; }
 
 .calendar-day {
   aspect-ratio: 1;
@@ -383,7 +329,6 @@ dialog::backdrop { background: #000; }
   align-items: center;
   justify-content: center;
   font-size: 0.8rem;
-  border-radius: 0.25rem;
   background: #111;
   cursor: default;
   border: 1px solid transparent;
@@ -391,9 +336,7 @@ dialog::backdrop { background: #000; }
   position: relative;
 }
 
-.calendar-day.today {
-  border-color: #444;
-}
+.calendar-day.today { border-color: #444; }
 
 .calendar-day.has-video {
   background: #fff;
@@ -402,9 +345,7 @@ dialog::backdrop { background: #000; }
   font-weight: 600;
 }
 
-.calendar-day.has-video:hover {
-  background: #ccc;
-}
+.calendar-day.has-video:hover { background: #ccc; }
 
 .calendar-day.has-video::after {
   content: '▶';
@@ -415,9 +356,7 @@ dialog::backdrop { background: #000; }
   opacity: 0.5;
 }
 
-.empty-day {
-  background: transparent;
-}
+.empty-day { background: transparent; }
 
 /* ── Video Dialog ───────────────────────────────────────── */
 
@@ -428,15 +367,6 @@ dialog::backdrop { background: #000; }
   padding: 3rem 2rem 2rem;
 }
 
-#videoDialog video {
-  max-width: 90vw;
-  max-height: 78dvh;
-  border-radius: 0.25rem;
-}
+#videoDialog video { max-width: 90vw; max-height: 78dvh; }
 
-#videoDialog footer {
-  display: flex;
-  gap: 2rem;
-  font-size: 0.75rem;
-  color: #555;
-}
+#videoDialog footer { display: flex; gap: 2rem; font-size: 0.75rem; color: #555; }
