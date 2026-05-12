@@ -1,151 +1,119 @@
-// Calendar Modal Class
 class CalendarInstance {
-    constructor() {
-        this.cameraId = null;
-        this.currentDate = new Date();
-        this.videoDates = new Set();
-        this.videoData = {};
-        this.modal = document.getElementById('calendarModal');
-        this.grid = this.modal.querySelector('.calendar-grid');
+  constructor() {
+    this.cameraId = null;
+    this.currentDate = new Date();
+    this.videoDates = new Set();
+    this.videoData = {};
+    this.dialog = document.getElementById('calendarDialog');
+    this.grid = this.dialog.querySelector('.calendar-grid');
+  }
+
+  async loadVideoData(cameraId) {
+    this.cameraId = cameraId;
+    try {
+      const data = await fetch(`/api/calendar/${cameraId}`).then(r => r.json());
+      this.videoDates = new Set();
+      this.videoData = {};
+      (data.videos || []).forEach(video => {
+        this.videoDates.add(video.date);
+        this.videoData[video.date] = video;
+      });
+      this.render();
+    } catch (e) {
+      console.error('Calendar load failed:', e);
+    }
+  }
+
+  changeMonth(direction) {
+    this.currentDate.setMonth(this.currentDate.getMonth() + direction);
+    this.render();
+  }
+
+  render() {
+    const year = this.currentDate.getFullYear();
+    const month = this.currentDate.getMonth();
+
+    const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+      'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+    this.dialog.querySelector('.current-month').textContent = `${monthNames[month]} ${year}`;
+
+    const firstDay = new Date(year, month, 1);
+    const numDays = new Date(year, month + 1, 0).getDate();
+    let firstDayOfWeek = firstDay.getDay();
+    firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+
+    const today = new Date();
+    const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+
+    const dayNames = Array.from(this.grid.querySelectorAll('.day-name'));
+    this.grid.innerHTML = '';
+    dayNames.forEach(n => this.grid.appendChild(n));
+
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      const el = document.createElement('div');
+      el.className = 'calendar-day empty-day';
+      this.grid.appendChild(el);
     }
 
-    async loadVideoData(cameraId) {
-        this.cameraId = cameraId;
-        
-        try {
-            const response = await fetch(`/api/calendar/${this.cameraId}`);
-            const data = await response.json();
+    for (let day = 1; day <= numDays; day++) {
+      const el = document.createElement('div');
+      el.className = 'calendar-day';
+      el.textContent = day;
 
-            this.videoDates = new Set();
-            this.videoData = {};
+      if (isCurrentMonth && day === today.getDate()) {
+        el.classList.add('today');
+      }
 
-            if (data.videos) {
-                data.videos.forEach(video => {
-                    this.videoDates.add(video.date);
-                    this.videoData[video.date] = video;
-                });
-            }
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      if (this.videoDates.has(dateStr)) {
+        el.classList.add('has-video');
+        el.title = `${this.videoData[dateStr].size_mb} MB`;
+        el.onclick = () => navigate(`#video/${this.cameraId}/${dateStr}`);
+      }
 
-            console.log(`Loaded ${this.videoDates.size} videos for camera ${this.cameraId}`);
-            this.render();
-        } catch (error) {
-            console.error('Failed to load video data:', error);
-        }
+      this.grid.appendChild(el);
     }
-
-    changeMonth(direction) {
-        this.currentDate.setMonth(this.currentDate.getMonth() + direction);
-        this.render();
-    }
-
-    render() {
-        const year = this.currentDate.getFullYear();
-        const month = this.currentDate.getMonth();
-
-        // Update header
-        const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
-            'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-        this.modal.querySelector('.current-month').textContent = `${monthNames[month]} ${year}`;
-
-        // Get first day of month and number of days
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const numDays = lastDay.getDate();
-
-        // Get day of week (0 = Sunday, 1 = Monday, etc.)
-        let firstDayOfWeek = firstDay.getDay();
-        // Convert to Monday = 0, Sunday = 6
-        firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-
-        // Get today
-        const today = new Date();
-        const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
-        const todayDate = today.getDate();
-
-        // Clear grid (keep day names)
-        const dayNames = Array.from(this.grid.querySelectorAll('.day-name'));
-        this.grid.innerHTML = '';
-        dayNames.forEach(name => this.grid.appendChild(name));
-
-        // Add empty cells for days before first day of month
-        for (let i = 0; i < firstDayOfWeek; i++) {
-            const emptyDay = document.createElement('div');
-            emptyDay.className = 'calendar-day empty-day';
-            this.grid.appendChild(emptyDay);
-        }
-
-        // Add days of month
-        for (let day = 1; day <= numDays; day++) {
-            const dayDiv = document.createElement('div');
-            dayDiv.className = 'calendar-day';
-            dayDiv.textContent = day;
-
-            // Check if today
-            if (isCurrentMonth && day === todayDate) {
-                dayDiv.classList.add('today');
-            }
-
-            // Check if there's a video for this date
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            if (this.videoDates.has(dateStr)) {
-                dayDiv.classList.add('has-video');
-                dayDiv.onclick = () => this.playVideo(dateStr);
-                dayDiv.title = `Play video - ${this.videoData[dateStr].size_mb} MB`;
-            }
-
-            this.grid.appendChild(dayDiv);
-        }
-    }
-
-    playVideo(dateStr) {
-        const video = this.videoData[dateStr];
-        if (!video) return;
-
-        const videoModal = document.getElementById('videoModal');
-        const videoSource = document.getElementById('videoSource');
-        const videoPlayer = document.getElementById('videoPlayer');
-
-        videoSource.src = `/video/${this.cameraId}/${dateStr}`;
-        videoPlayer.load();
-
-        // Update modal info
-        const [year, month, day] = dateStr.split('-');
-        const germanDate = `${day}.${month}.${year}`;
-        document.getElementById('videoDate').textContent = `Datum: ${germanDate}`;
-        document.getElementById('videoSize').textContent = `Größe: ${video.size_mb} MB`;
-        
-        // Hide calendar modal and show video modal
-        this.modal.style.display = 'none';
-        videoModal.style.display = 'flex';
-
-        // Auto play
-        videoPlayer.play();
-    }
+  }
 }
 
+// ── Global helpers ───────────────────────────────────────
 
-function closeVideoModal() {
-    videoModal.style.display = 'none';
-    videoPlayer.pause();
-    videoSource.src = '';
+function openCalendar(cameraId) {
+  if (!window.calendarInstance) {
+    window.calendarInstance = new CalendarInstance();
+  }
+  const inst = window.calendarInstance;
+  document.getElementById('calendarDialog').showModal();
+  if (inst.cameraId !== cameraId) {
+    inst.currentDate = new Date();
+    inst.loadVideoData(cameraId);
+  } else {
+    inst.render();
+  }
 }
-// Video modal controls (shared across all calendar instances)
-document.addEventListener('DOMContentLoaded', () => {
-    const videoModal = document.getElementById('videoModal');
-    const videoPlayer = document.getElementById('videoPlayer');
-    const videoSource = document.getElementById('videoSource');
 
-    videoModal.addEventListener('click', (e) => {
-        if (e.target.id === 'videoModal') {
-            closeVideoModal();
-        }
-    });
+function openVideoView(cameraId, dateStr) {
+  const player = document.getElementById('videoPlayer');
+  player.src = `/video/${cameraId}/${dateStr}`;
+  player.load();
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            if (videoModal.style.display === 'flex') {
-                closeVideoModal();
-            }
-        }
-    });
-});
+  const [year, month, day] = dateStr.split('-');
+  document.getElementById('videoDate').textContent = `${day}.${month}.${year}`;
+
+  const meta = window.calendarInstance?.videoData?.[dateStr];
+  document.getElementById('videoSize').textContent = meta ? `${meta.size_mb} MB` : '';
+
+  document.getElementById('videoDialog').showModal();
+  player.play().catch(() => {});
+}
+
+function navigateMonth(direction) {
+  window.calendarInstance?.changeMonth(direction);
+}
+
+function goToToday() {
+  if (window.calendarInstance) {
+    window.calendarInstance.currentDate = new Date();
+    window.calendarInstance.render();
+  }
+}

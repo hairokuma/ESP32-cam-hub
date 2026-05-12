@@ -1,146 +1,117 @@
-async function toggleLED(cameraId, event) {
-    if (event) event.stopPropagation();
-    const streamImg = event.target.closest('.camera-card').querySelector('.camera-stream');
-    streamImg.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E'; // Show blank image while toggling
-    await fetch(`/camera/${cameraId}/led`, { method: 'GET' })
-        .then(response => response.json())
-        .then(data => {
-            event.target.textContent = data.led == 'on' ? '⚫' : '🟡';
-        })
-        .catch(error => {
-            console.error('Error toggling LED:', error);
-        });
-    loadStream(streamImg);
+const BLANK = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%221%22 height=%221%22%3E%3C/svg%3E';
+
+// ── Navigation ───────────────────────────────────────────
+
+function navigate(hash) {
+  history.pushState(null, '', hash || location.pathname);
+  handleRoute();
 }
 
-// Calendar functions
-function showCalendar(cameraId, event) {
-    if (event) event.stopPropagation();
-    unloadStream(); // Stop stream while calendar is open
-    const modal = document.getElementById('calendarModal');
-    modal.style.display = 'flex';
-
-    // Initialize calendar if not already done
-    if (!window.calendarInstance) {
-        window.calendarInstance = new CalendarInstance();
-    }
-
-    // Reset to current date and load data for selected camera
-    window.calendarInstance.currentDate = new Date();
-    window.calendarInstance.loadVideoData(cameraId);
+function closeCurrentView() {
+  history.back();
 }
 
-function hideCalendar() {
-    const modal = document.getElementById('calendarModal');
-    modal.style.display = 'none';
-    loadStream(); // Restart stream when calendar is closed
+function handleRoute() {
+  const hash = location.hash;
+
+  // Close open dialogs and clean up
+  const timelineDialog = document.getElementById('timelineDialog');
+  const calendarDialog = document.getElementById('calendarDialog');
+  const videoDialog = document.getElementById('videoDialog');
+
+  if (timelineDialog.open) {
+    if (window.timelineInstance) window.timelineInstance.cleanup();
+    timelineDialog.close();
+  }
+  if (calendarDialog.open) calendarDialog.close();
+  if (videoDialog.open) {
+    const player = document.getElementById('videoPlayer');
+    player.pause();
+    player.removeAttribute('src');
+    videoDialog.close();
+  }
+
+  if (!hash || hash === '#') {
+    loadStream();
+    return;
+  }
+
+  unloadStream();
+
+  if (hash.startsWith('#timeline/')) {
+    openTimeline(hash.slice(10));
+  } else if (hash.startsWith('#calendar/')) {
+    openCalendar(hash.slice(10));
+  } else if (hash.startsWith('#video/')) {
+    const [cameraId, date] = hash.slice(7).split('/');
+    openVideoView(cameraId, date);
+  }
 }
 
-function navigateMonth(direction) {
-    if (window.calendarInstance) {
-        window.calendarInstance.changeMonth(direction);
-    }
+window.addEventListener('popstate', handleRoute);
+
+// ── Stream ───────────────────────────────────────────────
+
+function loadStream() {
+  document.querySelectorAll('.camera-stream').forEach(img => {
+    const url = img.dataset.streamUrl;
+    const label = img.closest('.stream-wrap').querySelector('.stream-label');
+    if (!url) return;
+    label.textContent = 'Wird geladen…';
+    img.onerror = () => { label.textContent = 'Nicht erreichbar'; };
+    img.onload = () => { label.textContent = ''; };
+    img.src = url;
+  });
 }
 
-// Timeline functions
-function showTimeline(cameraId) {
-    unloadStream(); // Stop stream while timeline is open
-    const overlay = document.getElementById('timelineModal');
-    overlay.style.display = 'flex';
-
-    // Initialize timeline
-    if (!window.timelineInstance) {
-        window.timelineInstance = new TimelineInstance();
-    }
-    window.timelineInstance.load(cameraId);
+function unloadStream() {
+  document.querySelectorAll('.camera-stream').forEach(img => {
+    img.src = BLANK;
+    img.onload = null;
+    img.onerror = null;
+    img.closest('.stream-wrap').querySelector('.stream-label').textContent = 'Stream gestoppt';
+  });
 }
 
-function hideTimeline() {
-    const overlay = document.getElementById('timelineModal');
-    overlay.style.display = 'none';
-
-    // Clean up timeline
-    if (window.timelineInstance) {
-        window.timelineInstance.cleanup();
-    }
-    loadStream(); // Restart stream when timeline is closed
-}
-
-function loadStream(img) {
-    const streamImages = document.querySelectorAll('.camera-stream');
-    streamImages.forEach(img => {
-        const streamUrl = img.dataset.streamUrl;
-        const overlay = img.parentElement.querySelector('.stream-overlay');
-        overlay.textContent = 'Loading stream…';
-        if (!streamUrl) return;
-        img.onerror = () => {
-            overlay.textContent = 'Failed to load stream';
-        };
-        img.src = streamUrl;
-    });
-}
-
-function unloadStream(img) {
-    const streamImages = document.querySelectorAll('.camera-stream');
-    streamImages.forEach(img => {
-        img.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a88%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E';
-        const overlay = img.parentElement.querySelector('.stream-overlay');
-        overlay.textContent = 'Stream stopped';
-    });
-}
+// ── Stats ────────────────────────────────────────────────
 
 function getCameraStats() {
-    fetch('/stats').then(response => response.json())
-        .then(data => {
-            console.log(data);
-            data.forEach(camera => {
-                const card = document.querySelector(`.camera-card[data-camera-id="${camera.id}"]`);
-                if (card) {
-                    card.querySelector('.stats').textContent = `${camera.imageCount} images captured - Latest:${camera.latestTime}`;
-                    card.querySelector('#status-indicator').textContent = camera.online ? '🟢' : '🔴';
-                }
-            })
-        })
-        .catch(error => {
-            console.error('Error fetching camera stats:', error);
-        });
+  fetch('/stats').then(r => r.json()).then(data => {
+    data.forEach(camera => {
+      const card = document.querySelector(`.camera-card[data-camera-id="${camera.id}"]`);
+      if (!card) return;
+      card.querySelector('footer').textContent = `${camera.imageCount} Aufnahmen · ${camera.latestTime}`;
+      card.querySelector('.status-dot').dataset.online = camera.online;
+    });
+  }).catch(console.error);
 }
 
-setTimeout(() => {
-    loadStream();
-    setInterval(getCameraStats, 10000);
+// ── LED ──────────────────────────────────────────────────
 
-    // Setup modal event listeners
-    setupModalHandlers();
-}, 100);
-
-// Setup modal close handlers
-function setupModalHandlers() {
-    const calendarModal = document.getElementById('calendarModal');
-    const timelineModal = document.getElementById('timelineModal');
-
-    // Close calendar on outside click
-    calendarModal.addEventListener('click', (e) => {
-        if (e.target.id === 'calendarModal') {
-            hideCalendar();
-        }
-    });
-
-    // Close timeline on outside click
-    timelineModal.addEventListener('click', (e) => {
-        if (e.target.id === 'timelineModal') {
-            hideTimeline();
-        }
-    });
-
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            if (calendarModal.style.display === 'flex') {
-                hideCalendar();
-            } else if (timelineModal.style.display === 'flex') {
-                hideTimeline();
-            }
-        }
-    });
+async function toggleLED(cameraId, event) {
+  event.stopPropagation();
+  const btn = event.currentTarget;
+  const img = btn.closest('.camera-card').querySelector('.camera-stream');
+  img.src = BLANK;
+  try {
+    const data = await fetch(`/camera/${cameraId}/led`).then(r => r.json());
+    btn.textContent = data.led === 'on' ? 'LED ●' : 'LED';
+  } catch (e) {
+    console.error('LED error:', e);
+  }
+  if (!location.hash) loadStream();
 }
+
+// ── Init ─────────────────────────────────────────────────
+
+window.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('dialog').forEach(dialog => {
+    dialog.addEventListener('cancel', e => {
+      e.preventDefault();
+      closeCurrentView();
+    });
+  });
+
+  setInterval(getCameraStats, 10000);
+  handleRoute();
+});

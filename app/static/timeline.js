@@ -1,224 +1,186 @@
-// Timeline Instance Class for fullscreen overlay
 class TimelineInstance {
-    constructor() {
-        this.cameraId = null;
-        this.images = [];
-        this.batches = [];
-        this.currentBatch = 0;
-        this.index = 0;
-        this.isDragging = false;
-        this.timelineObserver = null;
-        
-        this.timeline = document.getElementById('timeline');
-        this.scrubberTrack = document.getElementById('scrubberTrack');
-        this.scrubberBar = document.getElementById('scrubberBar');
-        this.scrubberTooltip = document.getElementById('scrubberTooltip');
-        this.batchContainer = document.getElementById('batchContainer');
-        
-        this.setupEventListeners();
-    }
+  constructor() {
+    this.cameraId = null;
+    this.images = [];
+    this.batches = [];
+    this.currentBatch = 0;
+    this.index = -1;
+    this.isDragging = false;
+    this.observer = null;
 
-    async load(cameraId, batch = null) {
-        this.cameraId = cameraId;
-        this.currentBatch = batch;
-        
-        try {
-            const url = batch !== null 
-                ? `/api/timeline/${cameraId}/${batch}` 
-                : `/api/timeline/${cameraId}`;
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            this.images = data.images || [];
-            this.batches = data.batches || [];
-            this.currentBatch = data.current_batch || 0;
-            
-            this.render();
-        } catch (error) {
-            console.error('Failed to load timeline data:', error);
+    this.stageEl = document.getElementById('timelineActive');
+    this.timeline = document.getElementById('timeline');
+    this.scrubberTrack = document.getElementById('scrubberTrack');
+    this.scrubberBar = document.getElementById('scrubberBar');
+    this.scrubberTooltip = document.getElementById('scrubberTooltip');
+    this.batchContainer = document.getElementById('batchContainer');
+
+    this.setupEventListeners();
+  }
+
+  async load(cameraId, batch = null) {
+    this.cameraId = cameraId;
+    this.index = -1;
+    const url = batch !== null
+      ? `/api/timeline/${cameraId}/${batch}`
+      : `/api/timeline/${cameraId}`;
+    try {
+      const data = await fetch(url).then(r => r.json());
+      this.images = data.images || [];
+      this.batches = data.batches || [];
+      this.currentBatch = data.current_batch || 0;
+      this.render();
+    } catch (e) {
+      console.error('Timeline load failed:', e);
+    }
+  }
+
+  render() {
+    this.batchContainer.innerHTML = '';
+    this.batches.forEach(batch => {
+      const a = document.createElement('a');
+      a.href = 'javascript:void(0)';
+      a.className = 'batch-item';
+      a.textContent = batch.name;
+      a.dataset.active = batch.active;
+      a.onclick = () => this.load(this.cameraId, batch.batch);
+      this.batchContainer.appendChild(a);
+    });
+
+    this.timeline.innerHTML = '';
+    this.images.forEach((image, i) => {
+      const item = document.createElement('div');
+      item.className = 'timeline-item';
+      item.dataset.item = i;
+      item.dataset.timestamp = image.timestamp;
+      item.onclick = () => this.displayImage(i);
+
+      const img = document.createElement('img');
+      img.src = BLANK;
+      img.dataset.src = image.src;
+      img.alt = image.timestamp;
+
+      const ts = document.createElement('div');
+      ts.className = 'timestamp';
+      ts.textContent = image.timestamp;
+
+      item.append(img, ts);
+      this.timeline.appendChild(item);
+    });
+
+    this.timeline.scrollLeft = this.timeline.scrollWidth;
+    this.initLazyLoad();
+    setTimeout(() => this.displayImage(this.images.length - 1), 200);
+  }
+
+  initLazyLoad() {
+    if (this.observer) this.observer.disconnect();
+    this.observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          img.src = img.dataset.src;
+          this.observer.unobserve(img);
         }
-    }
+      });
+    }, { root: this.timeline, rootMargin: '3300px', threshold: 0.01 });
 
-    render() {
-        // Render batch navigation
-        this.batchContainer.innerHTML = '';
-        this.batches.forEach(batch => {
-            const batchItem = document.createElement('a');
-            batchItem.href = 'javascript:void(0);';
-            batchItem.className = 'batch-item';
-            batchItem.textContent = batch.name;
-            batchItem.setAttribute('data-active', batch.active);
-            batchItem.onclick = () => this.load(this.cameraId, batch.batch);
-            this.batchContainer.appendChild(batchItem);
-        });
-        
-        // Render timeline images
-        this.timeline.innerHTML = '';
-        this.images.forEach((image, i) => {
-            const item = document.createElement('div');
-            item.className = 'timeline-item';
-            item.setAttribute('data-item', i);
-            item.setAttribute('data-timestamp', image.timestamp);
-            item.onclick = () => this.displayImage(i);
-            
-            const img = document.createElement('img');
-            img.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a88%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E';
-            img.setAttribute('data-src', image.src);
-            img.alt = 'Captured Image';
-            
-            const timestamp = document.createElement('div');
-            timestamp.className = 'timestamp';
-            timestamp.textContent = image.timestamp;
-            
-            item.appendChild(img);
-            item.appendChild(timestamp);
-            this.timeline.appendChild(item);
-        });
-                
-        // Scroll to end and display last image
-        this.timeline.scrollLeft = this.timeline.scrollWidth;
-        this.initializeLazyLoading();
-        
-        setTimeout(() => {
-            this.displayImage(this.images.length - 1);
-        }, 200);
-    }
+    this.timeline.querySelectorAll('img').forEach(img => this.observer.observe(img));
+  }
 
-    initializeLazyLoading() {
-        if (this.timelineObserver) this.timelineObserver.disconnect();
+  displayImage(i, scroll = true) {
+    if (i < 0 || i >= this.images.length) return;
+    const changed = i !== this.index;
+    this.index = i;
 
-        const options = {
-            root: this.timeline,
-            rootMargin: '3300px',
-            threshold: 0.01
-        };
+    const image = this.images[i];
 
-        this.timelineObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const img = entry.target;
-                    const src = img.getAttribute('data-src');
-                    img.src = src;
-                    this.timelineObserver.unobserve(img);
-                }
-            });
-        }, options);
+    if (changed) {
+      this.stageEl.innerHTML = `<img src="${image.src}" alt="${image.timestamp}">`;
+      this.scrubberTooltip.textContent = image.timestamp;
 
-        this.timeline.querySelectorAll('img').forEach(img => this.timelineObserver.observe(img));
-    }
+      this.timeline.querySelectorAll('.timeline-item.selected')
+        .forEach(el => el.classList.remove('selected'));
 
-    displayImage(i, scroll = true) {
-        if (i < 0 || i >= this.images.length || i === this.index) return;
-        this.index = i;
-        
-        document.querySelectorAll('.active').forEach(item => {
-            item.classList.remove('active');
-            item.classList.add('timeline-item');
-        });
-        document.querySelectorAll('.timeline-item.timeline-item-dummy').forEach(item => item.remove());
-        
-        const activeItem = this.timeline.querySelector(`.timeline-item[data-item="${this.index}"]`);
-        if (!activeItem) return;
-        
-        const timestamp = activeItem.getAttribute('data-timestamp');
-        
-        // Create dummy placeholder
-        const dummy = document.createElement('div');
-        dummy.classList.add('timeline-item', 'timeline-item-dummy');
-        dummy.innerHTML = `<img
-              src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a88%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E"
-              data-src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a88%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E" 
-              alt="Captured Image">
-            <div class="timestamp">${timestamp}</div>`;
-        
-        this.timeline.insertBefore(dummy, activeItem);
-        activeItem.classList.add('active');
-        activeItem.classList.remove('timeline-item');
-        this.scrubberTooltip.textContent = timestamp;
-
+      const activeItem = this.timeline.querySelector(`.timeline-item[data-item="${i}"]`);
+      if (activeItem) {
+        activeItem.classList.add('selected');
         if (scroll) {
-            dummy.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
-        
-        const maxScroll = this.timeline.scrollWidth - this.timeline.clientWidth;
-        const scrollPercentage = maxScroll > 0 ? this.timeline.scrollLeft / maxScroll : 0;
-        this.scrubberBar.style.left = `calc(${scrollPercentage * 100}% - 8px)`;
+      }
     }
 
-    handleTimelineScroll() {
-        if (this.images.length === 0) return;
-        const centerPosition = this.timeline.scrollLeft + (this.timeline.clientWidth / 2);
-        const scrollPercentage = this.timeline.scrollWidth > 0 ? centerPosition / this.timeline.scrollWidth : 0;
-        const visibleIndex = Math.round(scrollPercentage * (this.images.length - 1));
-        this.displayImage(visibleIndex, false);
-    }
+    const maxScroll = this.timeline.scrollWidth - this.timeline.clientWidth;
+    const pct = maxScroll > 0 ? this.timeline.scrollLeft / maxScroll : 0;
+    this.scrubberBar.style.left = `calc(${pct * 100}% - 0.5rem)`;
+  }
 
-    handleScrubberDrag(e) {
-        const rect = this.scrubberTrack.getBoundingClientRect();
-        const x = (e.type.includes('touch') ? e.touches[0].clientX : e.clientX) - rect.left;
-        const percentage = Math.max(0, Math.min(1, x / rect.width));
-        this.timeline.scrollLeft = percentage * (this.timeline.scrollWidth - this.timeline.clientWidth);
-    }
+  handleTimelineScroll() {
+    if (!this.images.length) return;
+    const center = this.timeline.scrollLeft + this.timeline.clientWidth / 2;
+    const pct = this.timeline.scrollWidth > 0 ? center / this.timeline.scrollWidth : 0;
+    this.displayImage(Math.round(pct * (this.images.length - 1)), false);
+  }
 
-    setupEventListeners() {
-        const startDrag = (e) => {
-            this.isDragging = true;
-            this.scrubberTrack.classList.add('dragging');
-            this.handleScrubberDrag(e);
-        };
+  handleScrubberDrag(e) {
+    const rect = this.scrubberTrack.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const pct = Math.max(0, Math.min(1, x / rect.width));
+    this.timeline.scrollLeft = pct * (this.timeline.scrollWidth - this.timeline.clientWidth);
+  }
 
-        const onDrag = (e) => {
-            if (!this.isDragging) return;
-            e.preventDefault();
-            this.handleScrubberDrag(e);
-        };
+  setupEventListeners() {
+    const startDrag = (e) => {
+      this.isDragging = true;
+      this.scrubberTrack.classList.add('dragging');
+      this.handleScrubberDrag(e);
+    };
+    const onDrag = (e) => {
+      if (!this.isDragging) return;
+      e.preventDefault();
+      this.handleScrubberDrag(e);
+    };
+    const endDrag = () => {
+      this.isDragging = false;
+      this.scrubberTrack.classList.remove('dragging');
+    };
 
-        const endDrag = () => {
-            if (this.isDragging) {
-                this.isDragging = false;
-                this.scrubberTrack.classList.remove('dragging');
-            }
-        };
+    const onKey = (e) => {
+      if (!document.getElementById('timelineDialog').open) return;
+      if (e.key === 'ArrowLeft') { e.preventDefault(); this.displayImage(this.index - 1); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); this.displayImage(this.index + 1); }
+    };
 
-        // Keyboard navigation
-        const handleKeyboard = (e) => {
-            if (document.getElementById('timelineModal').style.display !== 'flex') return;
-            
-            if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                this.displayImage(this.index - 1);
-            } else if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                this.displayImage(this.index + 1);
-            } else if (e.key === 'Escape') {
-                hideTimeline();
-            }
-        };
+    document.addEventListener('keydown', onKey);
+    document.getElementById('prevImage').addEventListener('click', () => this.displayImage(this.index - 1));
+    document.getElementById('nextImage').addEventListener('click', () => this.displayImage(this.index + 1));
 
-        document.addEventListener('keydown', handleKeyboard);
-        
-        // Navigation buttons
-        document.getElementById('prevImage').addEventListener('click', () => this.displayImage(this.index - 1));
-        document.getElementById('nextImage').addEventListener('click', () => this.displayImage(this.index + 1));
-        
-        // Scrubber
-        this.scrubberTrack.addEventListener('mousedown', startDrag);
-        document.addEventListener('mousemove', onDrag, { passive: false });
-        document.addEventListener('mouseup', endDrag);
-        this.scrubberTrack.addEventListener('touchstart', startDrag, { passive: false });
-        document.addEventListener('touchmove', onDrag, { passive: false });
-        document.addEventListener('touchend', endDrag);
-        
-        // Timeline scroll
-        this.timeline.addEventListener('scroll', () => this.handleTimelineScroll(), { passive: true });
-    }
+    this.scrubberTrack.addEventListener('mousedown', startDrag);
+    document.addEventListener('mousemove', onDrag, { passive: false });
+    document.addEventListener('mouseup', endDrag);
+    this.scrubberTrack.addEventListener('touchstart', startDrag, { passive: false });
+    document.addEventListener('touchmove', onDrag, { passive: false });
+    document.addEventListener('touchend', endDrag);
 
-    cleanup() {
-        if (this.timelineObserver) {
-            this.timelineObserver.disconnect();
-        }
-        this.timeline.innerHTML = '';
-        this.batchContainer.innerHTML = '';
-        this.index = 0;
-    }
+    this.timeline.addEventListener('scroll', () => this.handleTimelineScroll(), { passive: true });
+  }
+
+  cleanup() {
+    if (this.observer) this.observer.disconnect();
+    this.timeline.innerHTML = '';
+    this.batchContainer.innerHTML = '';
+    this.stageEl.innerHTML = '';
+    this.index = -1;
+  }
+}
+
+// ── Global helper ────────────────────────────────────────
+
+function openTimeline(cameraId) {
+  if (!window.timelineInstance) {
+    window.timelineInstance = new TimelineInstance();
+  }
+  document.getElementById('timelineDialog').showModal();
+  window.timelineInstance.load(cameraId);
 }

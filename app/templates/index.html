@@ -1,105 +1,85 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="de">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESP32-CAM Multi-Camera View</title>
+  <title>ESP32-CAM Hub</title>
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-  <div class="container" id="cameraGrid">
+  <main id="cameraGrid">
     {% for camera in cameras %}
-    <div class="camera-card" data-camera-id="{{ camera.id }}">
-      <div class="stream-overlay">Loading stream…</div>
-      <div class="camera-header">
-        <span id="status-indicator">🟢</span>
+    <article class="camera-card" data-camera-id="{{ camera.id }}">
+      <header>
+        <span class="status-dot" data-online="{{ 'true' if camera.online else 'false' }}"></span>
         <span>{{ camera.ip }}</span>
-        <div class="camera-controls">
-          <a href="javascript:void(0);" onclick="toggleLED('{{camera.id}}', event)" title="Toggle LED">
-            🟡
-          </a>
-          <a href="javascript:void(0);" onclick="showCalendar('{{camera.id}}', event)" title="View Calendar/Videos">
-            📅
-          </a>
-        </div>
+        <nav>
+          <button onclick="toggleLED('{{camera.id}}', event)">LED</button>
+          <button onclick="navigate('#calendar/{{camera.id}}')">&#9654;</button>
+        </nav>
+      </header>
+      <div class="stream-wrap">
+        <span class="stream-label">Wird geladen…</span>
+        <img
+          src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%221%22 height=%221%22%3E%3C/svg%3E"
+          data-stream-url="{{camera.streamUrl}}"
+          alt="Kamera {{ camera.id }}"
+          class="camera-stream"
+          onclick="navigate('#timeline/{{ camera.id }}')">
       </div>
-      <img onclick="showTimeline('{{ camera.id }}')"
-        src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%232a2a2a88%22 width=%22400%22 height=%22300%22/%3E%3C/svg%3E"
-        data-stream-url="{{camera.streamUrl}}" alt="Camera Stream" class="camera-stream">
-      <span class="stats">
-        {{ camera.imageCount }} images captured - Latest:{{ camera.latestTime}}
-      </span>
-    </div>
+      <footer>{{ camera.imageCount }} Aufnahmen &middot; {{ camera.latestTime }}</footer>
+    </article>
     {% endfor %}
-  </div>
+  </main>
 
-  <!-- Timeline Modal Overlay -->
-  <div class="modal-overlay" id="timelineModal" style="display: none;">
-    <div class="modal-content">
-      <button class="btn btn-close" onclick="hideTimeline()">&times;</button>
-      <button class="btn btn-prev" id="prevImage">‹</button>
-      <button class="btn btn-next" id="nextImage">›</button>
-    </div>
+  <dialog id="timelineDialog">
+    <button class="btn-close" onclick="closeCurrentView()">&#10005;</button>
+    <button class="btn-nav btn-prev" id="prevImage">&#8249;</button>
+    <button class="btn-nav btn-next" id="nextImage">&#8250;</button>
+    <div id="timelineActive" class="stage"></div>
     <div class="timeline-container">
-      <div class="batch-container" id="batchContainer">
-      </div>
+      <div class="batch-container" id="batchContainer"></div>
       <div class="scrubber-track" id="scrubberTrack">
         <div class="scrubber-bar" id="scrubberBar">
           <div class="scrubber-tooltip" id="scrubberTooltip"></div>
         </div>
       </div>
-      <div class="timeline" id="timeline">
-      </div>
+      <div class="timeline" id="timeline"></div>
     </div>
-  </div>
+  </dialog>
 
-  <!-- Calendar Modal -->
-  <div class="modal-overlay" id="calendarModal" style="display: none;">
-    <div class="modal-content">
-      <button class="btn btn-close" onclick="hideCalendar()">&times;</button>
-      <button class="btn btn-prev" onclick="navigateMonth(-1)">‹</button>
-      <button class="btn btn-next" onclick="navigateMonth(1)">›</button>
-      <div class="calendar">
-        <div class="calendar-header">
-          <h2 class="current-month"></h2>
-          <button onclick="goToToday()">Heute</button>
-        </div>
-        <div class="calendar-grid">
-          <div class="day-name">Mo</div>
-          <div class="day-name">Di</div>
-          <div class="day-name">Mi</div>
-          <div class="day-name">Do</div>
-          <div class="day-name">Fr</div>
-          <div class="day-name">Sa</div>
-          <div class="day-name">So</div>
-        </div>
+  <dialog id="calendarDialog">
+    <button class="btn-close" onclick="closeCurrentView()">&#10005;</button>
+    <section class="calendar">
+      <header>
+        <button onclick="navigateMonth(-1)">&#8249;</button>
+        <h2 class="current-month"></h2>
+        <button onclick="navigateMonth(1)">&#8250;</button>
+        <button onclick="goToToday()">Heute</button>
+      </header>
+      <div class="calendar-grid">
+        <span class="day-name">Mo</span>
+        <span class="day-name">Di</span>
+        <span class="day-name">Mi</span>
+        <span class="day-name">Do</span>
+        <span class="day-name">Fr</span>
+        <span class="day-name">Sa</span>
+        <span class="day-name">So</span>
       </div>
-    </div>
-  </div>
+    </section>
+  </dialog>
 
-  <!-- Video Modal -->
-  <div class="modal-overlay" id="videoModal" style="display: none;">
-    <div class="modal-content">
-      <button class="btn btn-close" onclick="closeVideoModal()">&times;</button>
-      <button class="btn btn-prev" onclick="navigateMonth(-1)">‹</button>
-      <button class="btn btn-next" onclick="navigateMonth(1)">›</button>
-      <video id="videoPlayer" controls>
-        <source id="videoSource" type="video/mp4">
-        Your browser does not support the video tag.
-      </video>
-      <div class="video-info">
-        <span id="videoDate"></span>
-        <span id="videoSize"></span>
-      </div>
-    <div>
-    </div>
-  </div>
+  <dialog id="videoDialog">
+    <button class="btn-close" onclick="closeCurrentView()">&#10005;</button>
+    <video id="videoPlayer" controls></video>
+    <footer>
+      <span id="videoDate"></span>
+      <span id="videoSize"></span>
+    </footer>
+  </dialog>
 
+  <script src="/main.js"></script>
+  <script src="/calendar.js"></script>
+  <script src="/timeline.js"></script>
 </body>
-<script src="/main.js"></script>
-<script src="/calendar.js"></script>
-<script src="/timeline.js"></script>
-
 </html>
