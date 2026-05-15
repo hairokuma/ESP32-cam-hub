@@ -4,7 +4,7 @@ ESP32-CAM Image Upload Server
 Receives and saves images from ESP32 camera
 """
 
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, Response
 from datetime import datetime, timedelta
 import os
 from pathlib import Path
@@ -344,7 +344,7 @@ def get_timeline_data(camera_id=None, batch=None):
         # Add live stream as the last item (only for the most recent batch)
         if current_batch == num_batches - 1:
             image_list.append({
-                'src': f"http://{NETWORK_PREFIX}{camera_id}/stream",
+                'src': f"/camera/{camera_id}/stream",
                 'filename': 'stream',
                 'size': 0,
                 'timestamp': 'now'
@@ -378,6 +378,24 @@ def get_timeline_data(camera_id=None, batch=None):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+
+@app.route('/camera/<camera_id>/stream', methods=['GET'])
+def proxy_stream(camera_id):
+    """Proxy the MJPEG stream from ESP32 camera (avoids CORS issues)"""
+    camera_ip = f"{NETWORK_PREFIX}{camera_id}"
+    try:
+        upstream = requests.get(
+            f"http://{camera_ip}/stream",
+            stream=True,
+            timeout=10
+        )
+        content_type = upstream.headers.get('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
+        return Response(upstream.iter_content(chunk_size=4096), content_type=content_type)
+    except requests.exceptions.ConnectionError:
+        return jsonify({'error': 'Camera not reachable', 'camera_id': camera_id}), 503
+    except Exception as e:
+        return jsonify({'error': str(e), 'camera_id': camera_id}), 500
 
 
 @app.route('/camera/<camera_id>/led', methods=['GET'])

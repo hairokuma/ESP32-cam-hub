@@ -43,8 +43,9 @@ class TimelineInstance {
   }
 
   // Fetch an image exactly once and store the blob URL on the image object.
-  // Returns a promise that resolves to the blob URL.
+  // Returns a promise that resolves to the blob URL (or src directly for streams).
   _fetchImage(image) {
+    if (image.filename === 'stream') return Promise.resolve(image.src);
     if (image.blobUrl) return Promise.resolve(image.blobUrl);
     if (image.loadPromise) return image.loadPromise;
     image.loadPromise = fetch(image.src)
