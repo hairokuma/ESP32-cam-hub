@@ -21,6 +21,7 @@ class TimelineInstance {
   async load(cameraId, batch = null) {
     this.cameraId = cameraId;
     this.index = -1;
+    this._revokeBlobUrls();
     const url = batch !== null
       ? `/api/timeline/${cameraId}/${batch}`
       : `/api/timeline/${cameraId}`;
@@ -33,6 +34,26 @@ class TimelineInstance {
     } catch (e) {
       console.error('Timeline load failed:', e);
     }
+  }
+
+  _revokeBlobUrls() {
+    this.images.forEach(img => {
+      if (img.blobUrl) URL.revokeObjectURL(img.blobUrl);
+    });
+  }
+
+  // Fetch an image exactly once and store the blob URL on the image object.
+  // Returns a promise that resolves to the blob URL.
+  _fetchImage(image) {
+    if (image.blobUrl) return Promise.resolve(image.blobUrl);
+    if (image.loadPromise) return image.loadPromise;
+    image.loadPromise = fetch(image.src)
+      .then(r => r.blob())
+      .then(blob => {
+        image.blobUrl = URL.createObjectURL(blob);
+        return image.blobUrl;
+      });
+    return image.loadPromise;
   }
 
   render() {
@@ -79,13 +100,33 @@ class TimelineInstance {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           const img = entry.target;
-          img.src = img.dataset.src;
+          const item = img.closest('.timeline-item');
+          const idx = item ? parseInt(item.dataset.item) : -1;
+          const image = idx >= 0 ? this.images[idx] : null;
+
+          if (image) {
+            this._fetchImage(image).then(blobUrl => {
+              img.src = blobUrl;
+              // If this is the currently displayed image, push the blob URL to stageEl too
+              if (idx === this.index) this._setStageUrl(blobUrl, image.timestamp);
+            });
+          }
           this.observer.unobserve(img);
         }
       });
     }, { root: this.timeline, rootMargin: '3300px', threshold: 0.01 });
 
     this.timeline.querySelectorAll('img').forEach(img => this.observer.observe(img));
+  }
+
+  _setStageUrl(blobUrl, alt) {
+    let stageImg = this.stageEl.querySelector('img');
+    if (!stageImg) {
+      stageImg = document.createElement('img');
+      this.stageEl.appendChild(stageImg);
+    }
+    stageImg.src = blobUrl;
+    stageImg.alt = alt;
   }
 
   displayImage(i, scroll = true) {
@@ -96,19 +137,16 @@ class TimelineInstance {
     const image = this.images[i];
 
     if (changed) {
-      const timelineImg = this.timeline.querySelector(`.timeline-item[data-item="${i}"] img`);
-      this.stageEl.innerHTML = '';
-      if (timelineImg && timelineImg.complete && timelineImg.naturalWidth > 0) {
-        const clone = timelineImg.cloneNode(false);
-        clone.alt = image.timestamp;
-        this.stageEl.appendChild(clone);
-      } else {
-        const img = document.createElement('img');
-        img.src = image.src;
-        img.alt = image.timestamp;
-        this.stageEl.appendChild(img);
-      }
       this.scrubberTooltip.textContent = image.timestamp;
+
+      // Fetch once — if already fetching/fetched, reuses the same promise/blobUrl
+      this._fetchImage(image).then(blobUrl => {
+        if (this.index !== i) return; // user navigated away while loading
+        this._setStageUrl(blobUrl, image.timestamp);
+        // Propagate to timeline thumbnail if lazy loader hasn't set it yet
+        const timelineImg = this.timeline.querySelector(`.timeline-item[data-item="${i}"] img`);
+        if (timelineImg && timelineImg.src !== blobUrl) timelineImg.src = blobUrl;
+      });
 
       this.timeline.querySelectorAll('.timeline-item.selected')
         .forEach(el => el.classList.remove('selected'));
@@ -179,6 +217,7 @@ class TimelineInstance {
 
   cleanup() {
     if (this.observer) this.observer.disconnect();
+    this._revokeBlobUrls();
     this.timeline.innerHTML = '';
     this.batchContainer.innerHTML = '';
     this.stageEl.innerHTML = '';
