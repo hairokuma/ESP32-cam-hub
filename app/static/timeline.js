@@ -96,7 +96,18 @@ class TimelineInstance {
     const image = this.images[i];
 
     if (changed) {
-      this.stageEl.innerHTML = `<img src="${image.src}" alt="${image.timestamp}">`;
+      const timelineImg = this.timeline.querySelector(`.timeline-item[data-item="${i}"] img`);
+      this.stageEl.innerHTML = '';
+      if (timelineImg && timelineImg.complete && timelineImg.naturalWidth > 0) {
+        const clone = timelineImg.cloneNode(false);
+        clone.alt = image.timestamp;
+        this.stageEl.appendChild(clone);
+      } else {
+        const img = document.createElement('img');
+        img.src = image.src;
+        img.alt = image.timestamp;
+        this.stageEl.appendChild(img);
+      }
       this.scrubberTooltip.textContent = image.timestamp;
 
       this.timeline.querySelectorAll('.timeline-item.selected')
