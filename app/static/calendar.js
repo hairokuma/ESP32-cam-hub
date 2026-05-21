@@ -4,6 +4,7 @@ class CalendarInstance {
     this.currentDate = new Date();
     this.videoDates = new Set();
     this.videoData = {};
+    this.sortedDates = []; // chronological, oldest first
     this.dialog = document.getElementById('calendarDialog');
     this.grid = this.dialog.querySelector('.calendar-grid');
   }
@@ -14,10 +15,13 @@ class CalendarInstance {
       const data = await fetch(`/api/calendar/${cameraId}`).then(r => r.json());
       this.videoDates = new Set();
       this.videoData = {};
+      this.sortedDates = [];
       (data.videos || []).forEach(video => {
         this.videoDates.add(video.date);
         this.videoData[video.date] = video;
+        this.sortedDates.push(video.date);
       });
+      this.sortedDates.reverse(); // API returns newest-first; we want oldest-first
       this.render();
     } catch (e) {
       console.error('Calendar load failed:', e);
@@ -103,8 +107,23 @@ function openVideoView(cameraId, dateStr) {
   const meta = window.calendarInstance?.videoData?.[dateStr];
   document.getElementById('videoSize').textContent = meta ? `${meta.size_mb} MB` : '';
 
+  const dates = window.calendarInstance?.sortedDates || [];
+  const idx = dates.indexOf(dateStr);
+  document.getElementById('prevVideo').hidden = idx <= 0;
+  document.getElementById('nextVideo').hidden = idx < 0 || idx >= dates.length - 1;
+
   document.getElementById('videoDialog').showModal();
   player.play().catch(() => {});
+}
+
+function navigateVideo(direction) {
+  const hash = location.hash;
+  if (!hash.startsWith('#video/')) return;
+  const [cameraId, dateStr] = hash.slice(7).split('/');
+  const dates = window.calendarInstance?.sortedDates || [];
+  const newIdx = dates.indexOf(dateStr) + direction;
+  if (newIdx < 0 || newIdx >= dates.length) return;
+  navigate(`#video/${cameraId}/${dates[newIdx]}`);
 }
 
 function navigateMonth(direction) {

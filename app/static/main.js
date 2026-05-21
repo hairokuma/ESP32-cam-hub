@@ -75,6 +75,8 @@ function unloadStream() {
 
 // ── Stats ────────────────────────────────────────────────
 
+const cameraImageCounts = {};
+
 function getCameraStats() {
   fetch('/stats').then(r => r.json()).then(data => {
     data.forEach(camera => {
@@ -82,6 +84,16 @@ function getCameraStats() {
       if (!card) return;
       card.querySelector('footer').textContent = `${camera.imageCount} Aufnahmen · ${camera.latestTime}`;
       card.querySelector('.status-dot').dataset.online = camera.online;
+
+      const prev = cameraImageCounts[camera.id];
+      cameraImageCounts[camera.id] = camera.imageCount;
+
+      if (prev !== undefined && camera.imageCount > prev) {
+        const timelineDialog = document.getElementById('timelineDialog');
+        if (timelineDialog.open && window.timelineInstance?.cameraId === camera.id) {
+          window.timelineInstance.appendNewImage(camera.latestImage);
+        }
+      }
     });
   }).catch(console.error);
 }

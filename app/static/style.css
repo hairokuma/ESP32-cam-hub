@@ -6,7 +6,6 @@ body {
   font-family: 'Segoe UI', system-ui, sans-serif;
   background: #000;
   color: #fff;
-  min-height: 100dvh;
 }
 
 body:has(dialog[open]) { overflow: hidden; }
@@ -109,7 +108,7 @@ button:hover { background: #333; border-color: #444; }
 }
 
 .btn-close:hover,
-.btn-nav:hover { color: #fff; }
+.btn-nav:hover { color: #fff; background: none; }
 
 .btn-close {
   top: 0;
@@ -119,6 +118,7 @@ button:hover { background: #333; border-color: #444; }
   line-height: 1;
   border-left: 1px solid #1a1a1a;
   border-bottom: 1px solid #1a1a1a;
+  z-index: 20;
 }
 
 /* Nav arrows — full-height strips on stage sides */
@@ -254,6 +254,7 @@ dialog::backdrop { background: #000; }
   cursor: pointer;
   padding: 0.6rem 0;
   margin: -0.6rem 0;
+  overflow: hidden;
 }
 
 .scrubber-track::after {
@@ -358,13 +359,14 @@ dialog::backdrop { background: #000; }
 
 .empty-day { background: transparent; }
 
+.btn-nav[hidden] { display: none; }
+
 /* ── Video Dialog ───────────────────────────────────────── */
 
 #videoDialog {
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  padding: 3rem 2rem 2rem;
 }
 
 #videoDialog video { max-width: 90vw; max-height: 78dvh; }

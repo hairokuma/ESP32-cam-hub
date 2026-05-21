@@ -72,6 +72,8 @@
 
   <dialog id="videoDialog">
     <button class="btn-close" onclick="closeCurrentView()">&#10005;</button>
+    <button class="btn-nav btn-prev" id="prevVideo" onclick="navigateVideo(-1)">&#8249;</button>
+    <button class="btn-nav btn-next" id="nextVideo" onclick="navigateVideo(1)">&#8250;</button>
     <video id="videoPlayer" controls></video>
     <footer>
       <span id="videoDate"></span>

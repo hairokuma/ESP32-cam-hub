@@ -278,12 +278,18 @@ def get_cameras():
             reverse=True
         )
         latest_time = datetime.fromtimestamp(files[0].stat().st_mtime).strftime('%d.%m.%Y %H:%M:%S') if files else None
+        latest_image = {
+            'src': f'/uploads/{camera_id}/{files[0].name}',
+            'filename': files[0].name,
+            'timestamp': datetime.fromtimestamp(files[0].stat().st_mtime).strftime('%H:%M:%S')
+        } if files else None
         cameras.append(
             {
                 "id": camera_id,
                 "ip": f"{NETWORK_PREFIX}{camera_id}",
                 "imageCount": image_count,
                 "latestTime": latest_time,
+                "latestImage": latest_image,
                 "streamUrl": f"http://{NETWORK_PREFIX}{camera_id}/stream",
                 "online": latest_time is not None and (datetime.now() - datetime.strptime(latest_time, '%d.%m.%Y %H:%M:%S')).total_seconds() < 300 # Consider online if last upload was within 5 minutes
             }

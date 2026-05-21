@@ -216,12 +216,55 @@ class TimelineInstance {
     this.timeline.addEventListener('scroll', () => this.handleTimelineScroll(), { passive: true });
   }
 
+  appendNewImage(image) {
+    if (!image) return;
+
+    // Only append when the current batch shows the stream (i.e. the latest batch)
+    const lastImg = this.images[this.images.length - 1];
+    if (!lastImg || lastImg.filename !== 'stream') return;
+
+    // Skip if this image is already in the list
+    if (this.images.some(img => img.filename === image.filename)) return;
+
+    const streamIndex = this.images.length - 1;
+    this.images.splice(streamIndex, 0, image);
+
+    const item = document.createElement('div');
+    item.className = 'timeline-item';
+    item.dataset.item = streamIndex;
+    item.dataset.timestamp = image.timestamp;
+    item.onclick = () => this.displayImage(streamIndex);
+
+    const img = document.createElement('img');
+    img.src = BLANK;
+    img.dataset.src = image.src;
+    img.alt = image.timestamp;
+
+    const ts = document.createElement('div');
+    ts.className = 'timestamp';
+    ts.textContent = image.timestamp;
+
+    item.append(img, ts);
+
+    const streamItem = this.timeline.querySelector(`.timeline-item[data-item="${streamIndex}"]`);
+    this.timeline.insertBefore(item, streamItem);
+
+    // Shift stream item's index by one
+    streamItem.dataset.item = streamIndex + 1;
+    streamItem.onclick = () => this.displayImage(streamIndex + 1);
+
+    // Keep this.index correct if we inserted before the selected item
+    if (this.index >= streamIndex) this.index++;
+
+    this.observer.observe(img);
+  }
+
   cleanup() {
     if (this.observer) this.observer.disconnect();
     this._revokeBlobUrls();
     this.timeline.innerHTML = '';
     this.batchContainer.innerHTML = '';
-    this.stageEl.innerHTML = '';
+    this.stageEl.querySelector('img')?.remove();
     this.index = -1;
   }
 }
