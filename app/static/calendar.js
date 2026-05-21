@@ -146,6 +146,13 @@ function stepVideoFrame(direction) {
   player.currentTime = Math.max(0, Math.min(player.duration || 0, player.currentTime + step));
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+  const player = document.getElementById('videoPlayer');
+  player.addEventListener('play',  () => { player.controls = true; });
+  player.addEventListener('pause', () => { player.controls = false; });
+  player.addEventListener('click', () => { if (player.paused) player.play().catch(() => {}); });
+});
+
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   if (e.key === '.') stepVideoFrame(1);
