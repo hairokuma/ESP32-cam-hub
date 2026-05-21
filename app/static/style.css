@@ -108,6 +108,7 @@ button:hover { background: #333; border-color: #444; }
 }
 
 .btn-close:hover,
+.btn-frame:hover,
 .btn-nav:hover { color: #fff; background: none; }
 
 .btn-close {
@@ -372,3 +373,22 @@ dialog::backdrop { background: #000; }
 #videoDialog video { max-width: 90vw; max-height: 78dvh; }
 
 #videoDialog footer { display: flex; gap: 2rem; font-size: 0.75rem; color: #555; }
+
+.frame-controls {
+  display: none;
+  gap: 1rem;
+}
+.btn-frame {
+  background: none;
+  border: solid;
+  color: #444;
+  cursor: pointer;
+  padding: 1rem;
+  transition: color 0.15s;
+  font-size: 1.5rem;
+  line-height: .5rem;
+}
+
+@media (pointer: coarse) {
+  .frame-controls { display: flex; }
+}

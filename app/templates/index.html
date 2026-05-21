@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ESP32-CAM Hub</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="favicon.png">
 </head>
 <body>
   <main id="cameraGrid">
@@ -15,6 +16,7 @@
         <span>{{ camera.ip }}</span>
         <nav>
           <button onclick="toggleLED('{{camera.id}}', event)">LED</button>
+          <button onclick="reloadStream('{{camera.id}}', event)">&#8635;</button>
           <button onclick="navigate('#calendar/{{camera.id}}')">&#9654;</button>
         </nav>
       </header>
@@ -75,6 +77,10 @@
     <button class="btn-nav btn-prev" id="prevVideo" onclick="navigateVideo(-1)">&#8249;</button>
     <button class="btn-nav btn-next" id="nextVideo" onclick="navigateVideo(1)">&#8250;</button>
     <video id="videoPlayer" controls></video>
+    <div class="frame-controls">
+      <button class="btn-frame" onclick="stepVideoFrame(-1)" title="Vorheriges Bild (,)">&#8249;</button>
+      <button class="btn-frame" onclick="stepVideoFrame(1)" title="Nächstes Bild (.)">&#8250;</button>
+    </div>
     <footer>
       <span id="videoDate"></span>
       <span id="videoSize"></span>

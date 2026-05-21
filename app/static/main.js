@@ -52,25 +52,56 @@ window.addEventListener('popstate', handleRoute);
 
 // ── Stream ───────────────────────────────────────────────
 
+function loadSingleStream(img, withTimeout) {
+  const url = img.dataset.streamUrl;
+  const label = img.closest('.stream-wrap').querySelector('.stream-label');
+  if (!url) return;
+
+  if (img._streamTimeout) { clearTimeout(img._streamTimeout); img._streamTimeout = null; }
+  img.onload = null;
+  img.onerror = null;
+  img.src = BLANK;
+
+  label.textContent = 'Wird geladen…';
+  img.onerror = () => {
+    clearTimeout(img._streamTimeout); img._streamTimeout = null;
+    label.textContent = 'Nicht erreichbar';
+  };
+  img.onload = () => {
+    clearTimeout(img._streamTimeout); img._streamTimeout = null;
+    label.textContent = '';
+  };
+  img.src = url;
+
+  if (withTimeout) {
+    img._streamTimeout = setTimeout(() => {
+      img._streamTimeout = null;
+      img.onload = null;
+      img.onerror = null;
+      img.src = BLANK;
+      label.textContent = 'Timeout';
+    }, 1000);
+  }
+}
+
 function loadStream() {
-  document.querySelectorAll('.camera-stream').forEach(img => {
-    const url = img.dataset.streamUrl;
-    const label = img.closest('.stream-wrap').querySelector('.stream-label');
-    if (!url) return;
-    label.textContent = 'Wird geladen…';
-    img.onerror = () => { label.textContent = 'Nicht erreichbar'; };
-    img.onload = () => { label.textContent = ''; };
-    img.src = url;
-  });
+  document.querySelectorAll('.camera-stream').forEach(img => loadSingleStream(img, true));
 }
 
 function unloadStream() {
   document.querySelectorAll('.camera-stream').forEach(img => {
+    if (img._streamTimeout) { clearTimeout(img._streamTimeout); img._streamTimeout = null; }
     img.src = BLANK;
     img.onload = null;
     img.onerror = null;
     img.closest('.stream-wrap').querySelector('.stream-label').textContent = 'Stream gestoppt';
   });
+}
+
+function reloadStream(cameraId, event) {
+  event.stopPropagation();
+  const card = document.querySelector(`.camera-card[data-camera-id="${cameraId}"]`);
+  loadSingleStream(card.querySelector('.camera-stream'), false);
 }
 
 // ── Stats ────────────────────────────────────────────────

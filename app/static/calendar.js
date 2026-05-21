@@ -136,3 +136,18 @@ function goToToday() {
     window.calendarInstance.render();
   }
 }
+
+function stepVideoFrame(direction) {
+  const dialog = document.getElementById('videoDialog');
+  if (!dialog.open) return;
+  const player = document.getElementById('videoPlayer');
+  if (!player.paused) player.pause();
+  const step = direction / 30;
+  player.currentTime = Math.max(0, Math.min(player.duration || 0, player.currentTime + step));
+}
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === '.') stepVideoFrame(1);
+  else if (e.key === ',') stepVideoFrame(-1);
+});
