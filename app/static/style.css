@@ -55,6 +55,7 @@ body:has(dialog[open]) { overflow: hidden; }
   height: 0.4rem;
   background: #333;
   flex-shrink: 0;
+  border-radius: 50%;
 }
 .status-dot[data-online="true"] { background: #fff; }
 
