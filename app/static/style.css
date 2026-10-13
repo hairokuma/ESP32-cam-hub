@@ -6,6 +6,7 @@ body {
   font-family: 'Segoe UI', system-ui, sans-serif;
   background: #000;
   color: #fff;
+  margin: 0;
 }
 
 body:has(dialog[open]) { overflow: hidden; }
@@ -20,7 +21,11 @@ body:has(dialog[open]) { overflow: hidden; }
 }
 
 @media (max-width: 42rem) {
-  #cameraGrid { grid-template-columns: 1fr; }
+  #cameraGrid { 
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 0;
+  }
 }
 
 /* ── Camera Card ────────────────────────────────────────── */
