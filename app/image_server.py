@@ -25,6 +25,7 @@ MIN_VIDEO_IMAGES = 10
 BATCH_SIZE = 1000  # Timeline images per batch
 ONLINE_THRESHOLD = timedelta(minutes=5)
 FONT_PATH = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
+DIAGNOSTIC_HEADERS = ('RSSI', 'Free-Heap', 'Min-Free-Heap', 'Uptime', 'Reset-Reason')  # Sent by the firmware
 
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 
@@ -153,7 +154,11 @@ def upload_image():
     filename = now.strftime('%H-%M-%S.jpg')
     (folder / filename).write_bytes(image_data)
 
-    print(f"✓ Camera {camera_id}: {folder.name}/{filename} ({len(image_data)} bytes)")
+    diagnostics = {h: request.headers[f'X-{h}'] for h in DIAGNOSTIC_HEADERS if f'X-{h}' in request.headers}
+    details = ' '.join(f'{h.lower()}={v}' for h, v in diagnostics.items())
+    print(f"✓ Camera {camera_id}: {folder.name}/{filename} ({len(image_data)} bytes) {details}".rstrip())
+    if diagnostics.get('Uptime', '').isdigit() and int(diagnostics['Uptime']) < 60:
+        print(f"⚠ Camera {camera_id} restarted, reason: {diagnostics.get('Reset-Reason', 'unknown')}")
     return jsonify({'status': 'success', 'camera_id': camera_id, 'filename': filename, 'size': len(image_data)})
 
 
@@ -220,7 +225,10 @@ def proxy_stream(camera_id):
     except requests.RequestException:
         return jsonify({'error': 'Camera not reachable', 'camera_id': camera_id}), 503
     content_type = upstream.headers.get('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
-    return Response(upstream.iter_content(chunk_size=4096), content_type=content_type)
+    response = Response(upstream.iter_content(chunk_size=4096), content_type=content_type)
+    # Close the camera connection when the viewer leaves; the camera serves only one stream at a time
+    response.call_on_close(upstream.close)
+    return response
 
 
 @app.route('/camera/<int:camera_id>/led')
