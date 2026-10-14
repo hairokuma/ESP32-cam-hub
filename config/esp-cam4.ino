@@ -19,7 +19,9 @@ const int CAMERA_QUALITY = 12;
 #define MOTION_PIN -1
 #endif
 const bool HAS_MOTION_SENSOR = MOTION_PIN >= 0;
-const unsigned long MOTION_INTERVAL_MS = 2000;   // upload interval while motion is detected
+// Minimum gap between uploads while motion is detected; in practice the upload time limits the
+// rate to a few frames per second. The hub turns these frames into a motion clip.
+const unsigned long MOTION_FRAME_INTERVAL_MS = 250;
 const unsigned long MOTION_WARMUP_MS = 60000;    // PIR output is unreliable right after power-up
 
 // Self-recovery: reconnect or restart instead of hanging until someone power-cycles the camera
@@ -210,10 +212,10 @@ void uploadTask(void * parameter){
   while(true){
     esp_task_wdt_reset();
 
-    // Upload every UPLOAD_INTERVAL_MS, or every MOTION_INTERVAL_MS while motion is detected.
+    // Upload every UPLOAD_INTERVAL_MS, or as fast as possible while motion is detected.
     // The motion interrupt ends the wait early so the interval is re-evaluated immediately.
     bool motion = motionDetected();
-    unsigned long interval = motion ? MOTION_INTERVAL_MS : UPLOAD_INTERVAL_MS;
+    unsigned long interval = motion ? MOTION_FRAME_INTERVAL_MS : UPLOAD_INTERVAL_MS;
     unsigned long elapsed = millis() - lastUpload;
     if (elapsed < interval){
       ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(interval - elapsed));

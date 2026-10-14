@@ -126,7 +126,7 @@ function getCameraStats() {
       if (prev !== undefined && camera.imageCount > prev) {
         const timelineDialog = document.getElementById('timelineDialog');
         if (timelineDialog.open && window.timelineInstance?.cameraId === camera.id) {
-          window.timelineInstance.appendNewImage(camera.latestImage);
+          window.timelineInstance.fetchNewImages();
         }
       }
     });

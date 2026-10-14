@@ -7,6 +7,7 @@ class CalendarInstance {
     this.videoData = {};   // date -> video info
     this.sortedDates = []; // chronological, oldest first
     this.motion = {};      // date -> number of motion events
+    this.clips = {};       // date -> motion clips [{timestamp, src}]
     this.dialog = document.getElementById('calendarDialog');
     this.grid = this.dialog.querySelector('.calendar-grid');
     this.dayNames = [...this.grid.querySelectorAll('.day-name')];
@@ -20,6 +21,7 @@ class CalendarInstance {
       this.videoData = Object.fromEntries(videos.map(v => [v.date, v]));
       this.sortedDates = videos.map(v => v.date);
       this.motion = data.motion || {};
+      this.clips = data.clips || {};
       this.render();
     } catch (e) {
       console.error('Calendar load failed:', e);
@@ -121,8 +123,29 @@ function openVideoView(cameraId, dateStr) {
   document.getElementById('prevVideo').hidden = idx <= 0;
   document.getElementById('nextVideo').hidden = idx < 0 || idx >= dates.length - 1;
 
+  renderClipList(player, `/video/${cameraId}/${dateStr}`, window.calendarInstance?.clips?.[dateStr] || []);
+
   document.getElementById('videoDialog').showModal();
   player.play().catch(() => {});
+}
+
+// Links to switch the player between the daily video and the day's motion clips
+function renderClipList(player, dailySrc, clips) {
+  const list = document.getElementById('clipList');
+  list.hidden = !clips.length;
+  const entries = [{ timestamp: 'Tagesvideo', src: dailySrc }, ...clips];
+  list.replaceChildren(...entries.map(entry => {
+    const button = document.createElement('button');
+    button.textContent = entry.timestamp;
+    button.classList.toggle('motion', entry.src !== dailySrc);
+    button.dataset.active = entry.src === dailySrc;
+    button.onclick = () => {
+      player.src = entry.src;
+      player.play().catch(() => {});
+      list.querySelectorAll('button').forEach(b => { b.dataset.active = b === button; });
+    };
+    return button;
+  }));
 }
 
 function navigateVideo(direction) {

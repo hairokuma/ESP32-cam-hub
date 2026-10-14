@@ -9,6 +9,7 @@ class TimelineInstance {
     this.autoScrolling = false; // true while scrollIntoView is moving the strip
     this.autoScrollTimer = null;
     this.observer = null;
+    this.fetchingNew = false;
 
     this.stageEl = document.getElementById('timelineActive');
     this.timeline = document.getElementById('timeline');
@@ -17,6 +18,7 @@ class TimelineInstance {
     this.scrubberTooltip = document.getElementById('scrubberTooltip');
     this.scrubberMarks = document.getElementById('scrubberMarks');
     this.batchContainer = document.getElementById('batchContainer');
+    this.playClipBtn = document.getElementById('playClip');
 
     this.setupEventListeners();
   }
@@ -85,6 +87,7 @@ class TimelineInstance {
     const item = document.createElement('div');
     item.className = 'timeline-item';
     item.classList.toggle('motion', !!image.motion);
+    item.classList.toggle('has-clip', !!image.clip);
     item.dataset.item = i;
 
     const img = document.createElement('img');
@@ -171,6 +174,8 @@ class TimelineInstance {
 
     if (changed) {
       this.scrubberTooltip.textContent = image.timestamp;
+      this.closeClip();
+      this.playClipBtn.hidden = !image.clip;
 
       // Fetch once — if already fetching/fetched, reuses the same promise/blobUrl
       this._fetchImage(image).then(blobUrl => {
@@ -195,6 +200,30 @@ class TimelineInstance {
     }
 
     this._updateScrubber();
+  }
+
+  // The first image of a motion event links to its clip once the event has ended
+  playClip() {
+    const image = this.images[this.index];
+    if (!image?.clip) return;
+    this.closeClip();
+    const video = document.createElement('video');
+    video.src = image.clip;
+    video.controls = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    this.stageEl.querySelector('img')?.setAttribute('hidden', '');
+    this.stageEl.appendChild(video);
+    this.playClipBtn.hidden = true;
+  }
+
+  closeClip() {
+    const video = this.stageEl.querySelector('video');
+    if (!video) return;
+    video.pause();
+    video.remove();
+    this.stageEl.querySelector('img')?.removeAttribute('hidden');
+    this.playClipBtn.hidden = !this.images[this.index]?.clip;
   }
 
   _scrollFraction() {
@@ -256,11 +285,15 @@ class TimelineInstance {
       else if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         this.jumpToMotion(e.shiftKey ? -1 : 1);
       }
+      else if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        this.stageEl.querySelector('video') ? this.closeClip() : this.playClip();
+      }
     };
 
     document.addEventListener('keydown', onKey);
     document.getElementById('prevImage').addEventListener('click', () => this.displayImage(this.index - 1));
     document.getElementById('nextImage').addEventListener('click', () => this.displayImage(this.index + 1));
+    this.playClipBtn.addEventListener('click', () => this.playClip());
 
     this.scrubberTrack.addEventListener('mousedown', startDrag);
     document.addEventListener('mousemove', onDrag, { passive: false });
@@ -276,14 +309,30 @@ class TimelineInstance {
     this.timeline.addEventListener('scroll', () => this.handleTimelineScroll(), { passive: true });
   }
 
-  appendNewImage(image) {
-    if (!image) return;
+  // Fetch the images uploaded since the newest one shown (several per second during motion)
+  // and link clips of motion events that have ended since
+  async fetchNewImages() {
+    // Only the latest batch, which ends with the stream, grows
+    const streamIndex = this.images.length - 1;
+    if (this.images[streamIndex]?.filename !== 'stream' || this.fetchingNew) return;
 
-    // Only append when the current batch shows the stream (i.e. the latest batch)
-    const lastImg = this.images[this.images.length - 1];
-    if (!lastImg || lastImg.filename !== 'stream') return;
+    this.fetchingNew = true;
+    const cameraId = this.cameraId;
+    const after = this.images[streamIndex - 1]?.filename || '';
+    try {
+      const data = await fetch(`/api/timeline/${cameraId}/new?after=${encodeURIComponent(after)}`).then(r => r.json());
+      if (this.cameraId !== cameraId || this.images[this.images.length - 1]?.filename !== 'stream') return;
+      this._addClips(data.clips || {});
+      data.images.forEach(image => this._appendImage(image));
+      this._renderMotionMarks();
+    } catch (e) {
+      console.error('Timeline update failed:', e);
+    } finally {
+      this.fetchingNew = false;
+    }
+  }
 
-    // Skip if this image is already in the list
+  _appendImage(image) {
     if (this.images.some(img => img.filename === image.filename)) return;
 
     const streamIndex = this.images.length - 1;
@@ -297,12 +346,23 @@ class TimelineInstance {
     // Keep this.index correct if we inserted before the selected item
     if (this.index >= streamIndex) this.index++;
 
-    this._renderMotionMarks();
-
     this.observer.observe(item.querySelector('img'));
   }
 
+  // clips: clip name (the event's first image without extension and motion suffix) -> URL
+  _addClips(clips) {
+    this.images.forEach((image, i) => {
+      const name = image.motion && image.filename.replace(/_m\.jpg$/, '');
+      if (!name || image.clip || !clips[name]) return;
+      image.clip = clips[name];
+      this.timeline.querySelector(`.timeline-item[data-item="${i}"]`)?.classList.add('has-clip');
+      if (i === this.index && !this.stageEl.querySelector('video')) this.playClipBtn.hidden = false;
+    });
+  }
+
   cleanup() {
+    this.closeClip();
+    this.playClipBtn.hidden = true;
     if (this.observer) this.observer.disconnect();
     this._revokeBlobUrls();
     this.timeline.innerHTML = '';
