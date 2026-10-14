@@ -316,9 +316,9 @@ dialog::backdrop { background: var(--bg); }
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 2px;
+  min-width: 2px;
+  margin-left: -1px; /* centers a single-image mark on its position */
   background: var(--motion);
-  transform: translateX(-50%);
 }
 
 .scrubber-track.dragging .scrubber-bar,

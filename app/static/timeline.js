@@ -135,18 +135,20 @@ class TimelineInstance {
     if (target !== undefined) this.displayImage(target);
   }
 
-  // One tick per motion image, at the scrubber position that selects it
+  // One mark per motion event, spanning the scrubber positions that select its images.
+  // A mark per image would be thousands of elements on a full day, which makes every repaint slow.
   _renderMotionMarks() {
-    this.scrubberTrack.title = this.images.some(image => image.motion)
-      ? 'M / Shift+M: nächste / vorherige Bewegung'
-      : '';
+    const starts = this._motionEventStarts();
+    this.scrubberTrack.title = starts.length ? 'M / Shift+M: nächste / vorherige Bewegung' : '';
     const last = Math.max(1, this.images.length - 1);
-    this.scrubberMarks.replaceChildren(...this.images.flatMap((image, i) => {
-      if (!image.motion) return [];
+    this.scrubberMarks.replaceChildren(...starts.map(start => {
+      let end = start;
+      while (this.images[end + 1]?.motion) end++;
       const mark = document.createElement('div');
       mark.className = 'scrubber-mark';
-      mark.style.left = `${(i / last) * 100}%`;
-      return [mark];
+      mark.style.left = `${(start / last) * 100}%`;
+      mark.style.width = `${((end - start) / last) * 100}%`;
+      return mark;
     }));
   }
 
