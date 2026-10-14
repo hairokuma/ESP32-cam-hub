@@ -1,6 +1,8 @@
 FROM python:3.12-slim
 
 ENV TZ=Europe/Berlin
+# Print log lines immediately instead of buffering them
+ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ffmpeg tzdata fonts-dejavu-core && \

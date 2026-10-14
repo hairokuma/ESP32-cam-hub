@@ -9,7 +9,8 @@ A complete multi-camera streaming and image capture system for ESP32-CAM modules
 - ✅ **Periodic high-quality captures** at UXGA (1600x1200)
 - ✅ **Non-blocking uploads** using FreeRTOS tasks
 - ✅ **Minimal stream interruption** (~300ms during HQ capture)
-- ✅ **Auto-reconnect** and error recovery
+- ✅ **Self-recovery**: reconnects WiFi and restarts itself after prolonged WiFi, upload or capture failures, plus a watchdog for hung uploads
+- ✅ **Diagnostics** (signal strength, free memory, uptime, restart reason) sent with every upload and logged by the server
 
 ### Web Interface Features
 - ✅ **Multi-camera grid view** (desktop) or list view (mobile)
@@ -155,6 +156,21 @@ const NETWORK_PREFIX = '192.168.2.'; // Your network prefix
 1. Verify `serverUrl` in ESP32 code matches server IP
 2. Check server logs for error messages
 3. Ensure sufficient PSRAM on ESP32
+
+### Camera Losing Connection
+The firmware recovers on its own: it retries WiFi every 30 s, restarts after 5 minutes
+without WiFi, after ~5 minutes of failed uploads or after 10 failed captures. Every upload
+logs diagnostics on the server (`docker logs esp-cam`):
+
+```
+✓ Camera 129: 2026-10-14/09-53-15.jpg (48211 bytes) rssi=-71 free-heap=91234 min-free-heap=80000 uptime=3600 reset-reason=poweron
+⚠ Camera 129 restarted, reason: brownout
+```
+
+- `reset-reason=brownout`: voltage dips → use a stronger 5 V supply (≥ 2 A) and a short, thick cable
+- `reset-reason=software:wifi_lost` / `rssi` below about -75 dBm: weak signal → move the camera or router, or use an external antenna
+- `reset-reason=panic` / `task_watchdog` or `min-free-heap` shrinking over time: firmware crash or memory leak
+- `reset-reason=software:upload_failed`: camera had WiFi but couldn't reach the server
 
 ### Image Quality Issues
 - For better quality: Lower `jpeg_quality` value (e.g., 8)
