@@ -10,6 +10,7 @@ A complete multi-camera streaming and image capture system for ESP32-CAM modules
 - ✅ **Non-blocking uploads** using FreeRTOS tasks
 - ✅ **Minimal stream interruption** (~300ms during HQ capture)
 - ✅ **Self-recovery**: reconnects WiFi and restarts itself after prolonged WiFi, upload or capture failures, plus a watchdog for hung uploads
+- ✅ **Optional motion sensor** (PIR / radar): extra uploads every 2 s while motion is detected, flagged and highlighted in the timeline
 - ✅ **Diagnostics** (signal strength, free memory, uptime, restart reason) sent with every upload and logged by the server
 
 ### Web Interface Features
@@ -53,6 +54,26 @@ const char* ssid = "your-wifi-name";
 const char* password = "your-wifi-password";
 const char* serverUrl = "http://192.168.2.38:5000/upload";
 ```
+
+### Optional: Motion Sensor
+Camera-based motion detection suffers from sensor noise and lighting changes, so a dedicated
+sensor is used instead. Any sensor with a digital output that goes HIGH on motion works,
+e.g. an **HC-SR501 PIR** or **RCWL-0516 radar** module:
+
+| Sensor | ESP32-CAM (AI-Thinker) |
+|--------|------------------------|
+| VCC    | 5V |
+| GND    | GND |
+| OUT    | GPIO 13 |
+
+Then set `#define MOTION_PIN 13` in `esp-cam4.ino` (leave it at `-1` for cameras without a sensor).
+
+- While motion is detected the camera uploads every 2 s (instead of 10 s); these images are
+  saved as `HH-MM-SS_m.jpg`, highlighted red in the timeline, marked on the scrubber and get a
+  red timestamp in the daily video
+- The PIR needs about a minute to settle after power-up; triggers during that time are ignored
+- HC-SR501: set the jumper to repeat trigger (H) and turn the time-delay pot to its minimum.
+  If it triggers falsely, move it a few cm away from the ESP32's antenna (WiFi interference)
 
 ### 3. Upload to ESP32
 

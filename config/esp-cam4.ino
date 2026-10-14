@@ -6,16 +6,22 @@
 #include "credentials.h"  // WiFi credentials (not committed to git)
 
 // ============= CONFIGURATION =============
-const int uploadInterval = 10000;
+const unsigned long UPLOAD_INTERVAL_MS = 10000;
 const framesize_t CAMERA_FRAMESIZE = FRAMESIZE_XGA;
 const int CAMERA_QUALITY = 12;
 #define LED_PIN 4
+
+// Motion sensor: digital output that goes HIGH on motion, e.g. HC-SR501 PIR (OUT -> GPIO 13,
+// VCC -> 5V) or RCWL-0516 radar. GPIO 13 is free on the AI-Thinker board. -1 = no sensor.
+#define MOTION_PIN -1
+const unsigned long MOTION_INTERVAL_MS = 2000;   // upload interval while motion is detected
+const unsigned long MOTION_WARMUP_MS = 60000;    // PIR output is unreliable right after power-up
 
 // Self-recovery: reconnect or restart instead of hanging until someone power-cycles the camera
 const unsigned long WIFI_BOOT_TIMEOUT_MS = 60000;       // restart if WiFi doesn't connect at boot
 const unsigned long WIFI_RECONNECT_INTERVAL_MS = 30000; // retry while disconnected
 const unsigned long WIFI_RESTART_AFTER_MS = 300000;     // restart after 5 minutes without WiFi
-const int MAX_UPLOAD_FAILURES = 30;                     // ~5 minutes of failed uploads
+const int MAX_UPLOAD_FAILURES = 30;                     // ~5 minutes at the normal upload interval
 const int MAX_CAPTURE_FAILURES = 10;
 const int WATCHDOG_TIMEOUT_S = 60;                      // upload task hung (e.g. stuck in a socket call)
 
@@ -171,16 +177,43 @@ void startCameraServer(){
 }
 
 
+// ============= MOTION SENSOR =============
+bool motionDetected(){
+#if MOTION_PIN >= 0
+  return millis() > MOTION_WARMUP_MS && digitalRead(MOTION_PIN) == HIGH;
+#else
+  return false;
+#endif
+}
+
+// Wake the upload task so the first motion image is taken right away
+void IRAM_ATTR onMotion(){
+  BaseType_t woken = pdFALSE;
+  if (uploadTaskHandle) vTaskNotifyGiveFromISR(uploadTaskHandle, &woken);
+  portYIELD_FROM_ISR(woken);
+}
+
+
 // ============= UPLOAD TASK =============
 void uploadTask(void * parameter){
   int uploadFailures = 0;
   int captureFailures = 0;
+  unsigned long lastUpload = 0;
   esp_task_wdt_add(NULL);
 
   while(true){
     esp_task_wdt_reset();
-    vTaskDelay(pdMS_TO_TICKS(uploadInterval));
-    esp_task_wdt_reset();
+
+    // Upload every UPLOAD_INTERVAL_MS, or every MOTION_INTERVAL_MS while motion is detected.
+    // The motion interrupt ends the wait early so the interval is re-evaluated immediately.
+    bool motion = motionDetected();
+    unsigned long interval = motion ? MOTION_INTERVAL_MS : UPLOAD_INTERVAL_MS;
+    unsigned long elapsed = millis() - lastUpload;
+    if (elapsed < interval){
+      ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(interval - elapsed));
+      continue;
+    }
+    lastUpload = millis();
 
     // WiFi outages are handled in loop(); don't count them as upload failures
     if (WiFi.status() != WL_CONNECTED) continue;
@@ -201,6 +234,7 @@ void uploadTask(void * parameter){
     http.addHeader("X-Min-Free-Heap", String(ESP.getMinFreeHeap()));
     http.addHeader("X-Uptime", String(millis() / 1000));
     http.addHeader("X-Reset-Reason", bootReason);
+    if (motion) http.addHeader("X-Motion", "1");
     http.setTimeout(10000);
 
     int response = http.POST(fb->buf, fb->len);
@@ -324,6 +358,12 @@ void setup(){
 
   xTaskCreatePinnedToCore(uploadTask, "UploadTask", 10000, NULL, 1, &uploadTaskHandle, 0);
   Serial.println("Upload task started");
+
+#if MOTION_PIN >= 0
+  pinMode(MOTION_PIN, INPUT_PULLDOWN);  // stays LOW if the sensor is disconnected
+  attachInterrupt(digitalPinToInterrupt(MOTION_PIN), onMotion, RISING);
+  Serial.printf("Motion sensor on GPIO %d\n", MOTION_PIN);
+#endif
 }
 
 // ============= LOOP =============
