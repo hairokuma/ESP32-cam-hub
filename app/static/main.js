@@ -173,6 +173,6 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   getCameraStats();
-  setInterval(getCameraStats, 10000);
+  setInterval(getCameraStats, 1000);
   handleRoute();
 });
