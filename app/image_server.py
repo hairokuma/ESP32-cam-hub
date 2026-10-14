@@ -62,23 +62,36 @@ def list_images(camera_id, date):
     return sorted(folder.glob('*.jpg')) if folder.is_dir() else []
 
 
+# Images are stored as HH-MM-SS.jpg, or HH-MM-SS_m.jpg when the camera's motion sensor triggered
+MOTION_SUFFIX = '_m'
+
+
+def image_time(path):
+    return path.stem.removesuffix(MOTION_SUFFIX).replace('-', ':')
+
+
+def is_motion(path):
+    return path.stem.endswith(MOTION_SUFFIX)
+
+
 def image_info(camera_id, path):
     return {
         'src': f'/uploads/{camera_id}/{path.name}',
         'filename': path.name,
-        'timestamp': path.stem.replace('-', ':')
+        'timestamp': image_time(path),
+        'motion': is_motion(path)
     }
 
 
 # ── Daily video ──────────────────────────────────────────
 
-def stamp_time(img, text, font):
-    """Draw the capture time on a black box in the bottom-right corner"""
+def stamp_time(img, text, font, motion=False):
+    """Draw the capture time in the bottom-right corner, on a red box for motion images"""
     draw = ImageDraw.Draw(img)
     left, top, right, bottom = draw.textbbox((0, 0), text, font=font)
     width, height = right - left, bottom - top
     x, y = img.width - width - 20, img.height - height - 20
-    draw.rectangle([x - 8, y - 8, x + width + 8, y + height + 8], fill=(0, 0, 0))
+    draw.rectangle([x - 8, y - 8, x + width + 8, y + height + 8], fill=(200, 0, 0) if motion else (0, 0, 0))
     draw.text((x, y), text, font=font, fill=(255, 255, 255))
 
 
@@ -109,7 +122,7 @@ def generate_daily_video(camera_id, date):
     try:
         for path in images:
             with Image.open(path) as img:
-                stamp_time(img, path.stem.replace('-', ':'), font)
+                stamp_time(img, image_time(path), font, is_motion(path))
                 img.save(ffmpeg.stdin, 'JPEG', quality=95)
         ffmpeg.stdin.close()
         success = ffmpeg.wait() == 0
@@ -151,7 +164,8 @@ def upload_image():
     now = datetime.now()
     folder = images_dir(camera_id, now.strftime('%Y-%m-%d'))
     folder.mkdir(parents=True, exist_ok=True)
-    filename = now.strftime('%H-%M-%S.jpg')
+    motion = request.headers.get('X-Motion') == '1'
+    filename = now.strftime('%H-%M-%S') + (MOTION_SUFFIX if motion else '') + '.jpg'
     (folder / filename).write_bytes(image_data)
 
     diagnostics = {h: request.headers[f'X-{h}'] for h in DIAGNOSTIC_HEADERS if f'X-{h}' in request.headers}
@@ -159,6 +173,8 @@ def upload_image():
     print(f"✓ Camera {camera_id}: {folder.name}/{filename} ({len(image_data)} bytes) {details}".rstrip())
     if diagnostics.get('Uptime', '').isdigit() and int(diagnostics['Uptime']) < 60:
         print(f"⚠ Camera {camera_id} restarted, reason: {diagnostics.get('Reset-Reason', 'unknown')}")
+    if motion:
+        print(f"● Camera {camera_id}: motion detected")
     return jsonify({'status': 'success', 'camera_id': camera_id, 'filename': filename, 'size': len(image_data)})
 
 

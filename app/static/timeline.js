@@ -15,6 +15,7 @@ class TimelineInstance {
     this.scrubberTrack = document.getElementById('scrubberTrack');
     this.scrubberBar = document.getElementById('scrubberBar');
     this.scrubberTooltip = document.getElementById('scrubberTooltip');
+    this.scrubberMarks = document.getElementById('scrubberMarks');
     this.batchContainer = document.getElementById('batchContainer');
 
     this.setupEventListeners();
@@ -72,6 +73,7 @@ class TimelineInstance {
     });
 
     this.timeline.replaceChildren(...this.images.map((image, i) => this._createItem(image, i)));
+    this._renderMotionMarks();
 
     // Jump to the newest image; at the scroll end the scroll position maps to it as well
     this.timeline.scrollTo({ left: this.timeline.scrollWidth, behavior: 'instant' });
@@ -82,6 +84,7 @@ class TimelineInstance {
   _createItem(image, i) {
     const item = document.createElement('div');
     item.className = 'timeline-item';
+    item.classList.toggle('motion', !!image.motion);
     item.dataset.item = i;
 
     const img = document.createElement('img');
@@ -94,6 +97,18 @@ class TimelineInstance {
 
     item.append(img, ts);
     return item;
+  }
+
+  // One tick per motion image, at the scrubber position that selects it
+  _renderMotionMarks() {
+    const last = Math.max(1, this.images.length - 1);
+    this.scrubberMarks.replaceChildren(...this.images.flatMap((image, i) => {
+      if (!image.motion) return [];
+      const mark = document.createElement('div');
+      mark.className = 'scrubber-mark';
+      mark.style.left = `${(i / last) * 100}%`;
+      return [mark];
+    }));
   }
 
   initLazyLoad() {
@@ -263,6 +278,8 @@ class TimelineInstance {
     // Keep this.index correct if we inserted before the selected item
     if (this.index >= streamIndex) this.index++;
 
+    this._renderMotionMarks();
+
     this.observer.observe(item.querySelector('img'));
   }
 
@@ -271,6 +288,7 @@ class TimelineInstance {
     this._revokeBlobUrls();
     this.timeline.innerHTML = '';
     this.batchContainer.innerHTML = '';
+    this.scrubberMarks.innerHTML = '';
     this.stageEl.querySelector('img')?.remove();
     this.index = -1;
   }
