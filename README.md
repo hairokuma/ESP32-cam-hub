@@ -91,8 +91,13 @@ flowchart LR
 | Sensor | ESP32-CAM (AI-Thinker) |
 |--------|------------------------|
 | VCC    | 5V |
-| GND    | GND |
+| GND    | GND next to 5V (the same GND as the power supply) |
 | OUT    | GPIO 13 |
+
+> **Use the GND pin next to 5V.** Not every header pin labelled GND is connected to ground on
+> all ESP32-CAM boards. With the sensor on such a pin its output never goes LOW, so every image
+> is flagged as motion. If in doubt, check with a multimeter that the pin has continuity with
+> the power supply's ground.
 
 The sensor's output is 3.3 V, so it connects directly to the GPIO without a level shifter.
 Then enable it for that camera, either in `esp-cam4.ino` or in its `credentials.h`:
