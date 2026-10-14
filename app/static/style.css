@@ -219,6 +219,11 @@ dialog::backdrop { background: var(--bg); }
 
 .timeline::-webkit-scrollbar { display: none; }
 
+/* Only the items near the viewport exist, positioned inside a sizer as wide as all of them */
+.timeline-sizer { position: relative; flex: none; }
+
+.timeline-sizer .timeline-item { position: absolute; top: 0; }
+
 .timeline-item {
   flex-shrink: 0;
   cursor: pointer;
@@ -251,29 +256,6 @@ dialog::backdrop { background: var(--bg); }
 .timeline-item.motion .timestamp { color: var(--motion); }
 
 .timeline-item.selected .timestamp { background: #222; color: var(--fg); }
-
-/* ── Batch Nav ──────────────────────────────────────────── */
-
-.batch-container { display: flex; gap: 0.4rem; }
-
-.batch-item {
-  flex: 1;
-  text-align: center;
-  color: #555;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 0.2rem 0.4rem;
-  cursor: pointer;
-  text-decoration: none;
-  font-size: 0.65rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: background 0.15s;
-}
-
-.batch-item:hover,
-.batch-item[data-active="true"] { background: var(--hover); color: var(--fg); border-color: var(--muted); }
 
 /* ── Scrubber ───────────────────────────────────────────── */
 
@@ -417,10 +399,6 @@ dialog::backdrop { background: var(--bg); }
 
 /* ── Video Dialog ───────────────────────────────────────── */
 
-/* Only the frames near the viewport exist, positioned inside a sizer as wide as all of them */
-.timeline-sizer { position: relative; flex: none; }
-
-.timeline-sizer .timeline-item { position: absolute; top: 0; }
 
 .video-info {
   display: flex;

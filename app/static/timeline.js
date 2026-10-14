@@ -1,17 +1,25 @@
-// Filmstrip of thumbnails with a scrubber in a dialog; subclasses change what the items are and how they show
+// Thumbnails kept loaded on each side of the visible ones; images further away are released
+const KEEP_LOADED = 50;
+
+// Filmstrip of thumbnails with a scrubber in a dialog; subclasses change what the items are and how they show.
+// A day has thousands of images, so only the items near the viewport exist in the DOM.
 class TimelineInstance {
   constructor(dialog) {
     this.dialog = dialog;
     this.cameraId = null;
     this.images = [];
-    this.batches = [];
-    this.currentBatch = 0;
     this.index = -1;
     this.isDragging = false;
-    this.autoScrolling = false; // true while scrollIntoView is moving the strip
+    this.autoScrolling = false; // true while the strip is scrolled to the selection
     this.autoScrollTimer = null;
-    this.observer = null;
     this.fetchingNew = false;
+    this.loadId = 0;            // detects loads that were superseded or closed while fetching
+    this.items = new Map();     // index -> element of the items that exist
+    this.loaded = new Set();    // images holding a blob URL
+    this.sizer = null;          // as wide as all items, so the strip scrolls as if they all existed
+    this.pitch = 0;             // distance between two items, px
+    this.itemWidth = 0;
+    this.windowFrame = 0;
 
     this.stageEl = dialog.querySelector('.stage');
     this.timeline = dialog.querySelector('.timeline');
@@ -19,33 +27,28 @@ class TimelineInstance {
     this.scrubberBar = dialog.querySelector('.scrubber-bar');
     this.scrubberTooltip = dialog.querySelector('.scrubber-tooltip');
     this.scrubberMarks = dialog.querySelector('.scrubber-marks');
-    this.batchContainer = dialog.querySelector('.batch-container');
 
     this.setupEventListeners();
   }
 
-  async load(cameraId, batch = null) {
+  async load(cameraId) {
+    const loadId = ++this.loadId;
     this.cameraId = cameraId;
-    this.index = -1;
-    this._revokeBlobUrls();
-    const url = batch !== null
-      ? `/api/timeline/${cameraId}/${batch}`
-      : `/api/timeline/${cameraId}`;
     try {
-      const data = await fetch(url).then(r => r.json());
+      const data = await fetch(`/api/timeline/${cameraId}`).then(r => r.json());
+      if (loadId !== this.loadId) return;
       this.images = data.images || [];
-      this.batches = data.batches || [];
-      this.currentBatch = data.current_batch || 0;
       this.render();
     } catch (e) {
       console.error('Timeline load failed:', e);
     }
   }
 
-  _revokeBlobUrls() {
-    this.images.forEach(img => {
-      if (img.blobUrl) URL.revokeObjectURL(img.blobUrl);
-    });
+  _releaseImage(image) {
+    URL.revokeObjectURL(image.blobUrl);
+    delete image.blobUrl;
+    delete image.loadPromise;
+    this.loaded.delete(image);
   }
 
   // Fetch an image exactly once and store the blob URL on the image object.
@@ -58,14 +61,14 @@ class TimelineInstance {
       .then(r => r.blob())
       .then(blob => {
         image.blobUrl = URL.createObjectURL(blob);
+        this.loaded.add(image);
         return image.blobUrl;
       });
     return image.loadPromise;
   }
 
   render() {
-    this.renderBatches();
-    this.selectedEl = null;
+    this.index = -1;
     this._renderItems();
     this._renderMotionMarks();
     // Centering the first or last item scrolls to the strip's start or end, which the scroll position maps to as well
@@ -78,30 +81,83 @@ class TimelineInstance {
   }
 
   _renderItems() {
-    this.timeline.replaceChildren(...this.images.map((image, i) => this._createItem(image, i)));
-    this.initLazyLoad();
+    this._clearItems();
+    // Measure one item to place the others without layout
+    const probe = this._createItem(this.images[0] || { timestamp: '' }, 0);
+    this.timeline.replaceChildren(probe);
+    this.itemWidth = probe.offsetWidth;
+    this.itemHeight = probe.offsetHeight;
+    this.pitch = this.itemWidth + (parseFloat(getComputedStyle(this.timeline).columnGap) || 0);
+
+    this.sizer = document.createElement('div');
+    this.sizer.className = 'timeline-sizer';
+    this.sizer.style.height = `${this.itemHeight}px`;
+    this._updateSizer();
+    this.timeline.replaceChildren(this.sizer);
+    this._renderWindow();
+  }
+
+  _updateSizer() {
+    this.sizer.style.width = `${this.images.length * this.pitch}px`;
+  }
+
+  _clearItems() {
+    this.items.clear();
+    this.sizer?.replaceChildren();
+    this.selectedEl = null;
+    cancelAnimationFrame(this.windowFrame);
+  }
+
+  _scheduleWindow() {
+    if (!this.sizer) return;
+    cancelAnimationFrame(this.windowFrame);
+    this.windowFrame = requestAnimationFrame(() => this._renderWindow());
+  }
+
+  // Create the items in and next to the viewport, remove the others and release far away images
+  _renderWindow() {
+    if (!this.sizer) return;
+    const buffer = 10;
+    const first = Math.max(0, Math.floor(this.timeline.scrollLeft / this.pitch) - buffer);
+    const last = Math.min(this.images.length - 1,
+      Math.ceil((this.timeline.scrollLeft + this.timeline.clientWidth) / this.pitch) + buffer);
+
+    for (const [i, el] of this.items) {
+      if (i >= first && i <= last) continue;
+      el.remove();
+      this.items.delete(i);
+      if (el === this.selectedEl) this.selectedEl = null;
+    }
+    const added = [];
+    for (let i = first; i <= last; i++) {
+      if (this.items.has(i)) continue;
+      const el = this._createItem(this.images[i], i);
+      el.style.left = `${i * this.pitch}px`;
+      this._loadThumb(el.querySelector('img'), i);
+      if (i === this.index) {
+        el.classList.add('selected');
+        this.selectedEl = el;
+      }
+      this.items.set(i, el);
+      added.push(el);
+    }
+    this.sizer.append(...added);
+
+    const keep = new Set(this.images.slice(Math.max(0, first - KEEP_LOADED), last + KEEP_LOADED + 1));
+    keep.add(this.images[this.index]);
+    this.loaded.forEach(image => { if (!keep.has(image)) this._releaseImage(image); });
   }
 
   _itemEl(i) {
-    return this.timeline.querySelector(`.timeline-item[data-item="${i}"]`);
+    return this.items.get(i) || null;
   }
 
+  // The item may not exist yet, so scroll by position
   _scrollToItem(i, scroll) {
-    this.selectedEl?.scrollIntoView({ behavior: scroll === 'instant' ? 'instant' : 'smooth', block: 'nearest', inline: 'center' });
-  }
-
-  renderBatches() {
-    if (!this.batchContainer) return;
-    this.batchContainer.innerHTML = '';
-    this.batches.forEach(batch => {
-      const a = document.createElement('a');
-      a.href = 'javascript:void(0)';
-      a.className = 'batch-item';
-      a.textContent = batch.name;
-      a.dataset.active = batch.active;
-      a.onclick = () => this.load(this.cameraId, batch.batch);
-      this.batchContainer.appendChild(a);
-    });
+    const max = this.timeline.scrollWidth - this.timeline.clientWidth;
+    const left = Math.max(0, Math.min(max, i * this.pitch + (this.itemWidth - this.timeline.clientWidth) / 2));
+    this.timeline.scrollTo({ left, behavior: scroll === 'instant' ? 'instant' : 'smooth' });
+    this._scheduleWindow();
   }
 
   _createItem(image, i) {
@@ -152,29 +208,8 @@ class TimelineInstance {
     }));
   }
 
-  initLazyLoad() {
-    if (this.observer) this.observer.disconnect();
-    this.observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const img = entry.target;
-          const idx = Number(img.closest('.timeline-item').dataset.item);
-          if (this.images[idx]) this._loadThumb(img, idx);
-          this.observer.unobserve(img);
-        }
-      });
-    }, { root: this.timeline, rootMargin: '3300px', threshold: 0.01 });
-
-    this.timeline.querySelectorAll('img').forEach(img => this.observer.observe(img));
-  }
-
   _loadThumb(img, i) {
-    const image = this.images[i];
-    this._fetchImage(image).then(blobUrl => {
-      img.src = blobUrl;
-      // If this is the currently displayed image, push the blob URL to stageEl too
-      if (i === this.index) this._setStageUrl(blobUrl, image.timestamp);
-    });
+    this._fetchImage(this.images[i]).then(blobUrl => { img.src = blobUrl; });
   }
 
   // Show item i on the stage
@@ -184,9 +219,6 @@ class TimelineInstance {
     this._fetchImage(image).then(blobUrl => {
       if (this.index !== i) return; // user navigated away while loading
       this._setStageUrl(blobUrl, image.timestamp);
-      // Propagate to timeline thumbnail if lazy loader hasn't set it yet
-      const timelineImg = this.timeline.querySelector(`.timeline-item[data-item="${i}"] img`);
-      if (timelineImg && timelineImg.src !== blobUrl) timelineImg.src = blobUrl;
     });
   }
 
@@ -298,12 +330,16 @@ class TimelineInstance {
       const item = e.target.closest('.timeline-item');
       if (item) this.displayImage(Number(item.dataset.item));
     });
-    this.timeline.addEventListener('scroll', () => this.handleTimelineScroll(), { passive: true });
+    this.timeline.addEventListener('scroll', () => {
+      this.handleTimelineScroll();
+      this._scheduleWindow();
+    }, { passive: true });
+    new ResizeObserver(() => this._scheduleWindow()).observe(this.timeline);
   }
 
   // Fetch the images uploaded since the newest one shown (several per second during motion)
   async fetchNewImages() {
-    // Only the latest batch, which ends with the stream, grows
+    // Only today's timeline, which ends with the stream, grows
     const streamIndex = this.images.length - 1;
     if (this.images[streamIndex]?.filename !== 'stream' || this.fetchingNew) return;
 
@@ -313,8 +349,19 @@ class TimelineInstance {
     try {
       const images = await fetch(`/api/timeline/${cameraId}/new?after=${encodeURIComponent(after)}`).then(r => r.json());
       if (this.cameraId !== cameraId || this.images[this.images.length - 1]?.filename !== 'stream') return;
+      const followStream = this.index === streamIndex;
       images.forEach(image => this._appendImage(image));
+      const added = this.images.length - 1 - streamIndex;
+      if (!added) return;
+      this._moveStreamItem(streamIndex, added);
+      this._updateSizer();
+      this._renderWindow();
       this._renderMotionMarks();
+      // Stay on the stream when it was selected
+      if (followStream) {
+        this._ignoreScrollUntilIdle();
+        this._scrollToItem(this.index, 'instant');
+      }
     } catch (e) {
       console.error('Timeline update failed:', e);
     } finally {
@@ -324,29 +371,31 @@ class TimelineInstance {
 
   _appendImage(image) {
     if (this.images.some(img => img.filename === image.filename)) return;
-
     const streamIndex = this.images.length - 1;
     this.images.splice(streamIndex, 0, image);
-
-    const item = this._createItem(image, streamIndex);
-    const streamItem = this.timeline.querySelector(`.timeline-item[data-item="${streamIndex}"]`);
-    this.timeline.insertBefore(item, streamItem);
-    streamItem.dataset.item = streamIndex + 1;
-
     // Keep this.index correct if we inserted before the selected item
     if (this.index >= streamIndex) this.index++;
+  }
 
-    this.observer.observe(item.querySelector('img'));
+  // Move the stream's item behind the inserted images instead of recreating it, which would reconnect the stream
+  _moveStreamItem(from, count) {
+    const el = this.items.get(from);
+    if (!el) return;
+    this.items.delete(from);
+    this.items.set(from + count, el);
+    el.dataset.item = from + count;
+    el.style.left = `${(from + count) * this.pitch}px`;
   }
 
   cleanup() {
-    if (this.observer) this.observer.disconnect();
-    this._revokeBlobUrls();
+    this.loadId++;
+    this._clearItems();
+    this.sizer = null;
+    this.loaded.forEach(image => this._releaseImage(image));
+    this.images = [];
     this.timeline.innerHTML = '';
-    this.batchContainer?.replaceChildren();
     this.scrubberMarks.innerHTML = '';
     this.stageEl.querySelector('img')?.remove();
-    this.selectedEl = null;
     this.index = -1;
   }
 }

@@ -30,7 +30,6 @@ VIDEO_FPS = 24
 MIN_VIDEO_IMAGES = 10
 THUMB_COLS, THUMB_ROWS = 10, 10  # Frames per thumbnail sheet of a video
 THUMB_WIDTH, THUMB_HEIGHT = 160, 120
-BATCH_SIZE = 1000  # Timeline images per batch
 ONLINE_THRESHOLD = timedelta(minutes=5)
 MOTION_ACTIVE_THRESHOLD = timedelta(seconds=30)  # Motion frames arrive several times a second while motion lasts
 FONT_PATH = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
@@ -314,27 +313,11 @@ def serve_upload(camera_id, filename):
 
 
 @app.route('/api/timeline/<int:camera_id>')
-@app.route('/api/timeline/<int:camera_id>/<int:batch>')
-def get_timeline_data(camera_id, batch=None):
-    """Today's images in batches of BATCH_SIZE; defaults to the latest batch"""
+def get_timeline_data(camera_id):
+    """All of today's images, followed by the live stream"""
     images = [image_info(camera_id, p) for p in list_images(camera_id, today())]
-    chunks = [images[i:i + BATCH_SIZE] for i in range(0, len(images), BATCH_SIZE)] or [[]]
-    last = len(chunks) - 1
-    current = last if batch is None else min(batch, last)
-
-    page = chunks[current]
-    if current == last:  # The live stream follows the most recent image
-        page = page + [{'src': f'/camera/{camera_id}/stream', 'filename': 'stream', 'timestamp': 'now'}]
-
-    return jsonify({
-        'camera_id': camera_id,
-        'images': page,
-        'batches': [
-            {'name': f"{c[0]['timestamp']} - {c[-1]['timestamp']}", 'batch': i, 'active': i == current}
-            for i, c in enumerate(chunks) if c
-        ],
-        'current_batch': current
-    })
+    images.append({'src': f'/camera/{camera_id}/stream', 'filename': 'stream', 'timestamp': 'now'})
+    return jsonify({'camera_id': camera_id, 'images': images})
 
 
 @app.route('/api/timeline/<int:camera_id>/new')
