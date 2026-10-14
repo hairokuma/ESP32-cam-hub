@@ -11,9 +11,14 @@ const framesize_t CAMERA_FRAMESIZE = FRAMESIZE_XGA;
 const int CAMERA_QUALITY = 12;
 #define LED_PIN 4
 
-// Motion sensor: digital output that goes HIGH on motion, e.g. HC-SR501 PIR (OUT -> GPIO 13,
-// VCC -> 5V) or RCWL-0516 radar. GPIO 13 is free on the AI-Thinker board. -1 = no sensor.
+// Optional motion sensor: digital output that goes HIGH on motion, e.g. HC-SR501 PIR
+// (OUT -> GPIO 13, VCC -> 5V) or RCWL-0516 radar. GPIO 13 is free on the AI-Thinker board.
+// Leave at -1 for cameras without a sensor; set it here, in credentials.h or as a build flag
+// (-DMOTION_PIN=13) for cameras that have one.
+#ifndef MOTION_PIN
 #define MOTION_PIN -1
+#endif
+const bool HAS_MOTION_SENSOR = MOTION_PIN >= 0;
 const unsigned long MOTION_INTERVAL_MS = 2000;   // upload interval while motion is detected
 const unsigned long MOTION_WARMUP_MS = 60000;    // PIR output is unreliable right after power-up
 
@@ -178,6 +183,7 @@ void startCameraServer(){
 
 
 // ============= MOTION SENSOR =============
+// Without a sensor (MOTION_PIN -1) this always returns false and no interrupt is attached
 bool motionDetected(){
 #if MOTION_PIN >= 0
   return millis() > MOTION_WARMUP_MS && digitalRead(MOTION_PIN) == HIGH;
@@ -234,6 +240,7 @@ void uploadTask(void * parameter){
     http.addHeader("X-Min-Free-Heap", String(ESP.getMinFreeHeap()));
     http.addHeader("X-Uptime", String(millis() / 1000));
     http.addHeader("X-Reset-Reason", bootReason);
+    if (HAS_MOTION_SENSOR) http.addHeader("X-Motion-Sensor", "1");  // lets the hub show motion info
     if (motion) http.addHeader("X-Motion", "1");
     http.setTimeout(10000);
 
