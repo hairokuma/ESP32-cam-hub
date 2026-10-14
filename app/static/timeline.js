@@ -1,3 +1,6 @@
+// Loaded thumbnails kept in memory; when scrolling stops, those furthest from the viewport are released
+const MAX_LOADED_THUMBS = 100;
+
 // Filmstrip of thumbnails with a scrubber in a dialog; subclasses change what the items are and how they show
 class TimelineInstance {
   constructor(dialog) {
@@ -12,6 +15,8 @@ class TimelineInstance {
     this.autoScrollTimer = null;
     this.observer = null;
     this.fetchingNew = false;
+    this.loadedThumbs = new Map(); // thumbnail img -> image whose blob URL it shows
+    this.releaseTimer = null;
 
     this.stageEl = dialog.querySelector('.stage');
     this.timeline = dialog.querySelector('.timeline');
@@ -28,6 +33,7 @@ class TimelineInstance {
     this.cameraId = cameraId;
     this.index = -1;
     this._revokeBlobUrls();
+    this.loadedThumbs.clear();
     const url = batch !== null
       ? `/api/timeline/${cameraId}/${batch}`
       : `/api/timeline/${cameraId}`;
@@ -172,6 +178,7 @@ class TimelineInstance {
     const image = this.images[i];
     this._fetchImage(image).then(blobUrl => {
       img.src = blobUrl;
+      this._trackThumb(img, image);
       // If this is the currently displayed image, push the blob URL to stageEl too
       if (i === this.index) this._setStageUrl(blobUrl, image.timestamp);
     });
@@ -186,7 +193,43 @@ class TimelineInstance {
       this._setStageUrl(blobUrl, image.timestamp);
       // Propagate to timeline thumbnail if lazy loader hasn't set it yet
       const timelineImg = this.timeline.querySelector(`.timeline-item[data-item="${i}"] img`);
-      if (timelineImg && timelineImg.src !== blobUrl) timelineImg.src = blobUrl;
+      if (timelineImg && timelineImg.src !== blobUrl) {
+        timelineImg.src = blobUrl;
+        this._trackThumb(timelineImg, image);
+      }
+    });
+  }
+
+  _trackThumb(img, image) {
+    if (image.filename !== 'stream') this.loadedThumbs.set(img, image);
+  }
+
+  _scheduleRelease() {
+    clearTimeout(this.releaseTimer);
+    this.releaseTimer = setTimeout(() => this._releaseFarThumbs(), 300);
+  }
+
+  // Free the blob URLs of the loaded thumbnails furthest from the viewport; scrolling back loads them again
+  _releaseFarThumbs() {
+    if (this.loadedThumbs.size <= MAX_LOADED_THUMBS) return;
+    const view = this.timeline.getBoundingClientRect();
+    const center = view.left + view.width / 2;
+    const selected = this.images[this.index];
+    const byDistance = [...this.loadedThumbs]
+      .filter(([, image]) => image !== selected)
+      .map(([img, image]) => {
+        const rect = img.getBoundingClientRect();
+        return { img, image, distance: Math.abs(rect.left + rect.width / 2 - center) };
+      })
+      .sort((a, b) => b.distance - a.distance);
+
+    byDistance.slice(0, this.loadedThumbs.size - MAX_LOADED_THUMBS).forEach(({ img, image }) => {
+      URL.revokeObjectURL(image.blobUrl);
+      delete image.blobUrl;
+      delete image.loadPromise;
+      img.src = BLANK;
+      this.loadedThumbs.delete(img);
+      this.observer?.observe(img);
     });
   }
 
@@ -298,7 +341,10 @@ class TimelineInstance {
       const item = e.target.closest('.timeline-item');
       if (item) this.displayImage(Number(item.dataset.item));
     });
-    this.timeline.addEventListener('scroll', () => this.handleTimelineScroll(), { passive: true });
+    this.timeline.addEventListener('scroll', () => {
+      this.handleTimelineScroll();
+      this._scheduleRelease();
+    }, { passive: true });
   }
 
   // Fetch the images uploaded since the newest one shown (several per second during motion)
@@ -341,7 +387,9 @@ class TimelineInstance {
 
   cleanup() {
     if (this.observer) this.observer.disconnect();
+    clearTimeout(this.releaseTimer);
     this._revokeBlobUrls();
+    this.loadedThumbs.clear();
     this.timeline.innerHTML = '';
     this.batchContainer?.replaceChildren();
     this.scrubberMarks.innerHTML = '';
