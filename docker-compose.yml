@@ -1,12 +1,8 @@
-version: '3.8'
-
 services:
   app:
     build: .
     container_name: esp-cam
-    working_dir: /app
     environment:
-      - TZ=Europe/Berlin
       - UPLOAD_FOLDER=/data
       - NETWORK_PREFIX=192.168.2.
     volumes:

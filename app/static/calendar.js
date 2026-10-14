@@ -23,7 +23,6 @@ class CalendarInstance {
         this.videoData[video.date] = video;
         this.sortedDates.push(video.date);
       });
-      this.sortedDates.reverse(); // API returns newest-first; we want oldest-first
       this.render();
     } catch (e) {
       console.error('Calendar load failed:', e);
