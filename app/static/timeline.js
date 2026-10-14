@@ -69,30 +69,28 @@ class TimelineInstance {
       this.batchContainer.appendChild(a);
     });
 
-    this.timeline.innerHTML = '';
-    this.images.forEach((image, i) => {
-      const item = document.createElement('div');
-      item.className = 'timeline-item';
-      item.dataset.item = i;
-      item.dataset.timestamp = image.timestamp;
-      item.onclick = () => this.displayImage(i);
-
-      const img = document.createElement('img');
-      img.src = BLANK;
-      img.dataset.src = image.src;
-      img.alt = image.timestamp;
-
-      const ts = document.createElement('div');
-      ts.className = 'timestamp';
-      ts.textContent = image.timestamp;
-
-      item.append(img, ts);
-      this.timeline.appendChild(item);
-    });
+    this.timeline.replaceChildren(...this.images.map((image, i) => this._createItem(image, i)));
 
     this.timeline.scrollLeft = this.timeline.scrollWidth;
     this.initLazyLoad();
     setTimeout(() => this.displayImage(this.images.length - 1), 200);
+  }
+
+  _createItem(image, i) {
+    const item = document.createElement('div');
+    item.className = 'timeline-item';
+    item.dataset.item = i;
+
+    const img = document.createElement('img');
+    img.src = BLANK;
+    img.alt = image.timestamp;
+
+    const ts = document.createElement('div');
+    ts.className = 'timestamp';
+    ts.textContent = image.timestamp;
+
+    item.append(img, ts);
+    return item;
   }
 
   initLazyLoad() {
@@ -213,6 +211,10 @@ class TimelineInstance {
     document.addEventListener('touchmove', onDrag, { passive: false });
     document.addEventListener('touchend', endDrag);
 
+    this.timeline.addEventListener('click', (e) => {
+      const item = e.target.closest('.timeline-item');
+      if (item) this.displayImage(Number(item.dataset.item));
+    });
     this.timeline.addEventListener('scroll', () => this.handleTimelineScroll(), { passive: true });
   }
 
@@ -229,34 +231,15 @@ class TimelineInstance {
     const streamIndex = this.images.length - 1;
     this.images.splice(streamIndex, 0, image);
 
-    const item = document.createElement('div');
-    item.className = 'timeline-item';
-    item.dataset.item = streamIndex;
-    item.dataset.timestamp = image.timestamp;
-    item.onclick = () => this.displayImage(streamIndex);
-
-    const img = document.createElement('img');
-    img.src = BLANK;
-    img.dataset.src = image.src;
-    img.alt = image.timestamp;
-
-    const ts = document.createElement('div');
-    ts.className = 'timestamp';
-    ts.textContent = image.timestamp;
-
-    item.append(img, ts);
-
+    const item = this._createItem(image, streamIndex);
     const streamItem = this.timeline.querySelector(`.timeline-item[data-item="${streamIndex}"]`);
     this.timeline.insertBefore(item, streamItem);
-
-    // Shift stream item's index by one
     streamItem.dataset.item = streamIndex + 1;
-    streamItem.onclick = () => this.displayImage(streamIndex + 1);
 
     // Keep this.index correct if we inserted before the selected item
     if (this.index >= streamIndex) this.index++;
 
-    this.observer.observe(img);
+    this.observer.observe(item.querySelector('img'));
   }
 
   cleanup() {

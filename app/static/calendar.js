@@ -4,25 +4,20 @@ class CalendarInstance {
   constructor() {
     this.cameraId = null;
     this.currentDate = new Date();
-    this.videoDates = new Set();
-    this.videoData = {};
+    this.videoData = {};   // date -> video info
     this.sortedDates = []; // chronological, oldest first
     this.dialog = document.getElementById('calendarDialog');
     this.grid = this.dialog.querySelector('.calendar-grid');
+    this.dayNames = [...this.grid.querySelectorAll('.day-name')];
   }
 
   async loadVideoData(cameraId) {
     this.cameraId = cameraId;
     try {
       const data = await fetch(`/api/calendar/${cameraId}`).then(r => r.json());
-      this.videoDates = new Set();
-      this.videoData = {};
-      this.sortedDates = [];
-      (data.videos || []).forEach(video => {
-        this.videoDates.add(video.date);
-        this.videoData[video.date] = video;
-        this.sortedDates.push(video.date);
-      });
+      const videos = data.videos || [];
+      this.videoData = Object.fromEntries(videos.map(v => [v.date, v]));
+      this.sortedDates = videos.map(v => v.date);
       this.render();
     } catch (e) {
       console.error('Calendar load failed:', e);
@@ -50,9 +45,7 @@ class CalendarInstance {
     const today = new Date();
     const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
 
-    const dayNames = Array.from(this.grid.querySelectorAll('.day-name'));
-    this.grid.innerHTML = '';
-    dayNames.forEach(n => this.grid.appendChild(n));
+    this.grid.replaceChildren(...this.dayNames);
 
     for (let i = 0; i < firstDayOfWeek; i++) {
       const el = document.createElement('div');
@@ -70,7 +63,7 @@ class CalendarInstance {
       }
 
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      if (this.videoDates.has(dateStr)) {
+      if (this.videoData[dateStr]) {
         el.classList.add('has-video');
         el.title = `${this.videoData[dateStr].size_mb} MB`;
         el.onclick = () => navigate(`#video/${this.cameraId}/${dateStr}`);
@@ -147,12 +140,12 @@ function stepVideoFrame(direction) {
   player.currentTime = Math.max(0, Math.min(player.duration || 0, player.currentTime + step));
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+{
   const player = document.getElementById('videoPlayer');
   player.addEventListener('play',  () => { player.controls = true; });
   player.addEventListener('pause', () => { player.controls = false; });
   player.addEventListener('click', () => { if (player.paused) player.play().catch(() => {}); });
-});
+}
 
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
