@@ -97,8 +97,31 @@ class TimelineInstance {
     this._renderWindow();
   }
 
+  // Half a viewport of space at each end lets every item reach the center, so the selection is always the
+  // centered item and scroll position, scrubber and selection map onto each other: scrollLeft = index * pitch
   _updateSizer() {
-    this.sizer.style.width = `${this.images.length * this.pitch}px`;
+    this.sizer.style.setProperty('--edge', `${this._edge()}px`);
+    this.sizer.style.width = `${Math.max(0, this.images.length - 1) * this.pitch + this.timeline.clientWidth}px`;
+  }
+
+  _edge() {
+    return (this.timeline.clientWidth - this.itemWidth) / 2;
+  }
+
+  _placeItem(el, i) {
+    el.dataset.item = i;
+    el.style.left = `calc(var(--edge) + ${i * this.pitch}px)`;
+  }
+
+  // The viewport width changed: resize the end spaces and keep the selection centered
+  _handleResize() {
+    if (!this.sizer || !this.timeline.clientWidth) return;
+    this._updateSizer();
+    if (this.index >= 0) {
+      this._ignoreScrollUntilIdle();
+      this._scrollToItem(this.index, 'instant');
+    }
+    this._scheduleWindow();
   }
 
   _clearItems() {
@@ -118,9 +141,10 @@ class TimelineInstance {
   _renderWindow() {
     if (!this.sizer) return;
     const buffer = 10;
-    const first = Math.max(0, Math.floor(this.timeline.scrollLeft / this.pitch) - buffer);
+    const start = this.timeline.scrollLeft - this._edge();
+    const first = Math.max(0, Math.floor(start / this.pitch) - buffer);
     const last = Math.min(this.images.length - 1,
-      Math.ceil((this.timeline.scrollLeft + this.timeline.clientWidth) / this.pitch) + buffer);
+      Math.ceil((start + this.timeline.clientWidth) / this.pitch) + buffer);
 
     for (const [i, el] of this.items) {
       if (i >= first && i <= last) continue;
@@ -132,7 +156,7 @@ class TimelineInstance {
     for (let i = first; i <= last; i++) {
       if (this.items.has(i)) continue;
       const el = this._createItem(this.images[i], i);
-      el.style.left = `${i * this.pitch}px`;
+      this._placeItem(el, i);
       this._loadThumb(el.querySelector('img'), i);
       if (i === this.index) {
         el.classList.add('selected');
@@ -153,12 +177,14 @@ class TimelineInstance {
   }
 
   // The item may not exist yet, so scroll by position
+  // Long jumps scroll at once: animating them takes long and passes thousands of items
   _scrollToItem(i, scroll) {
-    const max = this.timeline.scrollWidth - this.timeline.clientWidth;
-    const left = Math.max(0, Math.min(max, i * this.pitch + (this.itemWidth - this.timeline.clientWidth) / 2));
-    this.timeline.scrollTo({ left, behavior: scroll === 'instant' ? 'instant' : 'smooth' });
+    const left = i * this.pitch;
+    const far = Math.abs(left - this.timeline.scrollLeft) > 2 * this.timeline.clientWidth;
+    this.timeline.scrollTo({ left, behavior: scroll === 'instant' || far ? 'instant' : 'smooth' });
     this._scheduleWindow();
   }
+
 
   _createItem(image, i) {
     const item = document.createElement('div');
@@ -278,15 +304,17 @@ class TimelineInstance {
       this._updateScrubber();
       return;
     }
-    // Scroll start selects the first image, scroll end the last (same mapping as the scrubber)
-    this.displayImage(Math.round(this._scrollFraction() * (this.images.length - 1)), false);
+    // The item in the center is selected
+    const i = Math.round(this.timeline.scrollLeft / this.pitch);
+    this.displayImage(Math.max(0, Math.min(this.images.length - 1, i)), false);
   }
 
   handleScrubberDrag(e) {
     const rect = this.scrubberTrack.getBoundingClientRect();
     const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
     const pct = Math.max(0, Math.min(1, x / rect.width));
-    this.timeline.scrollLeft = pct * (this.timeline.scrollWidth - this.timeline.clientWidth);
+    const max = this.timeline.scrollWidth - this.timeline.clientWidth;
+    this.timeline.scrollTo({ left: pct * max, behavior: 'instant' });
   }
 
   setupEventListeners() {
@@ -334,7 +362,7 @@ class TimelineInstance {
       this.handleTimelineScroll();
       this._scheduleWindow();
     }, { passive: true });
-    new ResizeObserver(() => this._scheduleWindow()).observe(this.timeline);
+    new ResizeObserver(() => this._handleResize()).observe(this.timeline);
   }
 
   // Fetch the images uploaded since the newest one shown (several per second during motion)
@@ -383,8 +411,7 @@ class TimelineInstance {
     if (!el) return;
     this.items.delete(from);
     this.items.set(from + count, el);
-    el.dataset.item = from + count;
-    el.style.left = `${(from + count) * this.pitch}px`;
+    this._placeItem(el, from + count);
   }
 
   cleanup() {

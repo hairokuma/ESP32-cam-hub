@@ -211,7 +211,6 @@ dialog::backdrop { background: var(--bg); }
   display: flex;
   gap: 0.4rem;
   overflow-x: auto;
-  scroll-behavior: smooth;
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding: 0.1rem 0;
