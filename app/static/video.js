@@ -9,9 +9,15 @@ class VideoTimeline extends TimelineInstance {
     this.player = dialog.querySelector('video');
     this.followingPlayback = false;
     this.seekTarget = null;
+    this.items = new Map(); // index -> element; only the frames around the viewport exist in the DOM
+    this.pitch = 0;         // distance between two frames in the strip, px
+    this.itemWidth = 0;
+    this.windowFrame = 0;
 
     // Seek once per finished seek instead of once per scroll event
     this.player.addEventListener('seeked', () => this._applySeek());
+    this.timeline.addEventListener('scroll', () => this._scheduleWindow(), { passive: true });
+    new ResizeObserver(() => this._scheduleWindow()).observe(this.timeline);
 
     this.player.addEventListener('play',  () => { this.player.controls = true; });
     this.player.addEventListener('pause', () => { this.player.controls = false; });
@@ -22,6 +28,7 @@ class VideoTimeline extends TimelineInstance {
   async load(cameraId, date) {
     this.cameraId = cameraId;
     this.date = date;
+    this.index = -1;
     this.player.src = `/video/${cameraId}/${date}`;
 
     const [year, month, day] = date.split('-');
@@ -48,6 +55,78 @@ class VideoTimeline extends TimelineInstance {
   _initialIndex() {
     return 0;
   }
+
+  // Thousands of frames are too many elements, so only those near the viewport are created
+  _renderItems() {
+    this._clearItems();
+    const probe = super._createItem(this.images[0] || { timestamp: '' }, 0);
+    this.timeline.replaceChildren(probe);
+    this.itemWidth = probe.offsetWidth;
+    this.itemHeight = probe.offsetHeight;
+    this.pitch = this.itemWidth + (parseFloat(getComputedStyle(this.timeline).columnGap) || 0);
+
+    this.sizer = document.createElement('div');
+    this.sizer.className = 'timeline-sizer';
+    this.sizer.style.width = `${this.images.length * this.pitch}px`;
+    this.sizer.style.height = `${this.itemHeight}px`;
+    this.timeline.replaceChildren(this.sizer);
+    this._renderWindow();
+  }
+
+  _clearItems() {
+    this.items.clear();
+    this.selectedEl = null;
+    cancelAnimationFrame(this.windowFrame);
+  }
+
+  _scheduleWindow() {
+    if (!this.pitch) return;
+    cancelAnimationFrame(this.windowFrame);
+    this.windowFrame = requestAnimationFrame(() => this._renderWindow());
+  }
+
+  _renderWindow() {
+    if (!this.sizer) return;
+    const buffer = 10;
+    const first = Math.max(0, Math.floor(this.timeline.scrollLeft / this.pitch) - buffer);
+    const last = Math.min(this.images.length - 1,
+      Math.ceil((this.timeline.scrollLeft + this.timeline.clientWidth) / this.pitch) + buffer);
+
+    for (const [i, el] of this.items) {
+      if (i >= first && i <= last) continue;
+      el.remove();
+      this.items.delete(i);
+      if (el === this.selectedEl) this.selectedEl = null;
+    }
+    const added = [];
+    for (let i = first; i <= last; i++) {
+      if (this.items.has(i)) continue;
+      const el = super._createItem(this.images[i], i);
+      el.style.left = `${i * this.pitch}px`;
+      this._loadThumb(el.querySelector('img'), i);
+      if (i === this.index) {
+        el.classList.add('selected');
+        this.selectedEl = el;
+      }
+      this.items.set(i, el);
+      added.push(el);
+    }
+    this.sizer.append(...added);
+  }
+
+  _itemEl(i) {
+    return this.items.get(i) || null;
+  }
+
+  // The frame may not exist in the DOM yet, so scroll by position
+  _scrollToItem(i, scroll) {
+    const max = this.timeline.scrollWidth - this.timeline.clientWidth;
+    const left = Math.max(0, Math.min(max, i * this.pitch + (this.itemWidth - this.timeline.clientWidth) / 2));
+    this.timeline.scrollTo({ left, behavior: scroll === 'instant' ? 'instant' : 'smooth' });
+    this._scheduleWindow();
+  }
+
+  initLazyLoad() {}
 
   // The img stays blank; the frame shows as its background, cut out of the thumbnail sheet
   _loadThumb(img, i) {
@@ -98,7 +177,11 @@ class VideoTimeline extends TimelineInstance {
 
   cleanup() {
     super.cleanup();
+    this._clearItems();
+    this.sizer = null;
+    this.pitch = 0;
     this.seekTarget = null;
+    this.images = [];
     this.date = null;
     this.player.pause();
     this.player.removeAttribute('src');
