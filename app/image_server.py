@@ -45,6 +45,14 @@ def get_camera_id(ip_address):
         return 'unknown'
 
 
+def get_camera_ids():
+    """Camera IDs (last IP octet) that have an upload folder, in numeric order"""
+    return sorted(
+        (d.name for d in Path(UPLOAD_FOLDER).iterdir() if d.is_dir() and d.name.isdigit()),
+        key=int
+    )
+
+
 def generate_daily_video(camera_id, date_str):
     """Generate video from all images of a specific day with timestamp overlays"""
     temp_dir = None
@@ -183,12 +191,7 @@ def generate_videos_for_yesterday():
     print(f"Generating videos for {yesterday}")
     print(f"{'='*50}")
     
-    camera_folders = [d for d in Path(UPLOAD_FOLDER).iterdir() if d.is_dir()]
-    
-    for camera_folder in camera_folders:
-        camera_id = camera_folder.name
-        if camera_id == 'videos':  # Skip videos folder
-            continue
+    for camera_id in get_camera_ids():
         generate_daily_video(camera_id, yesterday)
     
     print(f"{'='*50}\n")
@@ -248,9 +251,10 @@ def upload_image():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/uploads/<camera_id>/<filename>', methods=['GET'])
+@app.route('/uploads/<int:camera_id>/<filename>', methods=['GET'])
 def serve_upload(camera_id, filename):
     """Serve uploaded images from today's folder"""
+    camera_id = str(camera_id)
     try:
         today = datetime.now().strftime('%Y-%m-%d')
         today_folder = os.path.join(UPLOAD_FOLDER, camera_id, 'images', today)
@@ -264,11 +268,9 @@ def get_stats():
 
 def get_cameras():
     """Get list of active cameras based on upload folders"""
-    camera_folders = [d for d in Path(UPLOAD_FOLDER).iterdir() if d.is_dir()]
-    
     cameras = []
-    for camera_folder in camera_folders:
-        camera_id = camera_folder.name
+    for camera_id in get_camera_ids():
+        camera_folder = Path(UPLOAD_FOLDER) / camera_id
         today = datetime.now().strftime('%Y-%m-%d')
         today_folder = camera_folder / 'images' / today
         image_count = len(list(today_folder.glob('*.jpg'))) if today_folder.exists() else 0
@@ -294,7 +296,6 @@ def get_cameras():
                 "online": latest_time is not None and (datetime.now() - datetime.strptime(latest_time, '%d.%m.%Y %H:%M:%S')).total_seconds() < 300 # Consider online if last upload was within 5 minutes
             }
         )
-    cameras.sort(key=lambda x: int(x['id']))
     return cameras
 
 @app.route('/', methods=['GET'])
@@ -303,10 +304,11 @@ def index():
     return render_template('index.html', cameras=get_cameras())
 
 
-@app.route('/api/timeline/<camera_id>', methods=['GET'])
-@app.route('/api/timeline/<camera_id>/<int:batch>', methods=['GET'])
-def get_timeline_data(camera_id=None, batch=None):
+@app.route('/api/timeline/<int:camera_id>', methods=['GET'])
+@app.route('/api/timeline/<int:camera_id>/<int:batch>', methods=['GET'])
+def get_timeline_data(camera_id, batch=None):
     """Get timeline data as JSON"""
+    camera_id = str(camera_id)
     try:
         today = datetime.now().strftime('%Y-%m-%d')
 
@@ -386,7 +388,7 @@ def get_timeline_data(camera_id=None, batch=None):
 
 
 
-@app.route('/camera/<camera_id>/stream', methods=['GET'])
+@app.route('/camera/<int:camera_id>/stream', methods=['GET'])
 def proxy_stream(camera_id):
     """Proxy the MJPEG stream from ESP32 camera (avoids CORS issues)"""
     camera_ip = f"{NETWORK_PREFIX}{camera_id}"
@@ -404,7 +406,7 @@ def proxy_stream(camera_id):
         return jsonify({'error': str(e), 'camera_id': camera_id}), 500
 
 
-@app.route('/camera/<camera_id>/led', methods=['GET'])
+@app.route('/camera/<int:camera_id>/led', methods=['GET'])
 def control_led(camera_id):
     """Proxy endpoint to control camera LED (avoids CORS issues)"""
     
@@ -432,10 +434,10 @@ def control_led(camera_id):
         return jsonify({'error': str(e), 'camera_id': camera_id}), 500
 
 
-@app.route('/api/calendar/<camera_id>', methods=['GET'])
+@app.route('/api/calendar/<int:camera_id>', methods=['GET'])
 def get_calendar_data(camera_id):
     """Get calendar data showing which days have videos"""
-    
+    camera_id = str(camera_id)
     try:
         videos_folder = os.path.join(UPLOAD_FOLDER, camera_id, 'videos')
         
@@ -466,9 +468,10 @@ def get_calendar_data(camera_id):
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/video/<camera_id>/<date>', methods=['GET'])
+@app.route('/video/<int:camera_id>/<date>', methods=['GET'])
 def serve_video(camera_id, date):
     """Serve a specific video file"""
+    camera_id = str(camera_id)
     try:
         videos_folder = os.path.join(UPLOAD_FOLDER, camera_id, 'videos')
         video_file = f'{date}.mp4'
@@ -514,7 +517,7 @@ if __name__ == '__main__':
     # generate_daily_video('129', datetime.now().strftime('%Y-%m-%d'))
 
     try:
-        app.run(host='0.0.0.0', port=5000, debug=True)
+        app.run(host='0.0.0.0', port=5000)
     except (KeyboardInterrupt, SystemExit):
         scheduler.shutdown()
         print("\n\nServer stopped")

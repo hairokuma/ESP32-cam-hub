@@ -1,3 +1,5 @@
+const VIDEO_FPS = 24; // must match VIDEO_FPS in image_server.py
+
 class CalendarInstance {
   constructor() {
     this.cameraId = null;
@@ -142,7 +144,7 @@ function stepVideoFrame(direction) {
   if (!dialog.open) return;
   const player = document.getElementById('videoPlayer');
   if (!player.paused) player.pause();
-  const step = direction / 30;
+  const step = direction / VIDEO_FPS;
   player.currentTime = Math.max(0, Math.min(player.duration || 0, player.currentTime + step));
 }
 
