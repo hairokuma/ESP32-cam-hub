@@ -9,12 +9,14 @@ class TimelineInstance {
     this.autoScrolling = false; // true while scrollIntoView is moving the strip
     this.autoScrollTimer = null;
     this.observer = null;
+    this.fetchingNew = false;
 
     this.stageEl = document.getElementById('timelineActive');
     this.timeline = document.getElementById('timeline');
     this.scrubberTrack = document.getElementById('scrubberTrack');
     this.scrubberBar = document.getElementById('scrubberBar');
     this.scrubberTooltip = document.getElementById('scrubberTooltip');
+    this.scrubberMarks = document.getElementById('scrubberMarks');
     this.batchContainer = document.getElementById('batchContainer');
 
     this.setupEventListeners();
@@ -72,6 +74,7 @@ class TimelineInstance {
     });
 
     this.timeline.replaceChildren(...this.images.map((image, i) => this._createItem(image, i)));
+    this._renderMotionMarks();
 
     // Jump to the newest image; at the scroll end the scroll position maps to it as well
     this.timeline.scrollTo({ left: this.timeline.scrollWidth, behavior: 'instant' });
@@ -82,6 +85,7 @@ class TimelineInstance {
   _createItem(image, i) {
     const item = document.createElement('div');
     item.className = 'timeline-item';
+    item.classList.toggle('motion', !!image.motion);
     item.dataset.item = i;
 
     const img = document.createElement('img');
@@ -94,6 +98,34 @@ class TimelineInstance {
 
     item.append(img, ts);
     return item;
+  }
+
+  // Motion events are runs of consecutive motion images (same definition as the server's count)
+  _motionEventStarts() {
+    return this.images.flatMap((image, i) => image.motion && !this.images[i - 1]?.motion ? [i] : []);
+  }
+
+  jumpToMotion(direction) {
+    const starts = this._motionEventStarts();
+    const target = direction > 0
+      ? starts.find(i => i > this.index)
+      : starts.findLast(i => i < this.index);
+    if (target !== undefined) this.displayImage(target);
+  }
+
+  // One tick per motion image, at the scrubber position that selects it
+  _renderMotionMarks() {
+    this.scrubberTrack.title = this.images.some(image => image.motion)
+      ? 'M / Shift+M: nächste / vorherige Bewegung'
+      : '';
+    const last = Math.max(1, this.images.length - 1);
+    this.scrubberMarks.replaceChildren(...this.images.flatMap((image, i) => {
+      if (!image.motion) return [];
+      const mark = document.createElement('div');
+      mark.className = 'scrubber-mark';
+      mark.style.left = `${(i / last) * 100}%`;
+      return [mark];
+    }));
   }
 
   initLazyLoad() {
@@ -222,6 +254,9 @@ class TimelineInstance {
       if (!document.getElementById('timelineDialog').open) return;
       if (e.key === 'ArrowLeft') { e.preventDefault(); this.displayImage(this.index - 1); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); this.displayImage(this.index + 1); }
+      else if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        this.jumpToMotion(e.shiftKey ? -1 : 1);
+      }
     };
 
     document.addEventListener('keydown', onKey);
@@ -242,14 +277,28 @@ class TimelineInstance {
     this.timeline.addEventListener('scroll', () => this.handleTimelineScroll(), { passive: true });
   }
 
-  appendNewImage(image) {
-    if (!image) return;
+  // Fetch the images uploaded since the newest one shown (several per second during motion)
+  async fetchNewImages() {
+    // Only the latest batch, which ends with the stream, grows
+    const streamIndex = this.images.length - 1;
+    if (this.images[streamIndex]?.filename !== 'stream' || this.fetchingNew) return;
 
-    // Only append when the current batch shows the stream (i.e. the latest batch)
-    const lastImg = this.images[this.images.length - 1];
-    if (!lastImg || lastImg.filename !== 'stream') return;
+    this.fetchingNew = true;
+    const cameraId = this.cameraId;
+    const after = this.images[streamIndex - 1]?.filename || '';
+    try {
+      const images = await fetch(`/api/timeline/${cameraId}/new?after=${encodeURIComponent(after)}`).then(r => r.json());
+      if (this.cameraId !== cameraId || this.images[this.images.length - 1]?.filename !== 'stream') return;
+      images.forEach(image => this._appendImage(image));
+      this._renderMotionMarks();
+    } catch (e) {
+      console.error('Timeline update failed:', e);
+    } finally {
+      this.fetchingNew = false;
+    }
+  }
 
-    // Skip if this image is already in the list
+  _appendImage(image) {
     if (this.images.some(img => img.filename === image.filename)) return;
 
     const streamIndex = this.images.length - 1;
@@ -271,6 +320,7 @@ class TimelineInstance {
     this._revokeBlobUrls();
     this.timeline.innerHTML = '';
     this.batchContainer.innerHTML = '';
+    this.scrubberMarks.innerHTML = '';
     this.stageEl.querySelector('img')?.remove();
     this.index = -1;
   }

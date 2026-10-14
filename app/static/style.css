@@ -7,6 +7,7 @@
   --border: #1a1a1a;
   --hover: #333;
   --muted: #444;
+  --motion: #e5484d;
 }
 
 html, body { overflow-x: hidden; }
@@ -72,6 +73,18 @@ body:has(dialog[open]) { overflow: hidden; }
   border-radius: 50%;
 }
 .status-dot[data-online="true"] { background: var(--fg); }
+
+.motion-badge { color: #666; }
+
+.motion-badge[data-active="true"] { color: var(--motion); }
+
+.motion-badge[data-active="true"]::before {
+  content: '●';
+  margin-right: 0.3rem;
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse { to { opacity: 0.2; } }
 
 .stream-wrap { position: relative; }
 
@@ -215,6 +228,8 @@ dialog::backdrop { background: var(--bg); }
   transition: border-color 0.1s;
 }
 
+.timeline-item.motion { border-color: var(--motion); }
+
 .timeline-item:hover,
 .timeline-item.selected { border-color: var(--fg); }
 
@@ -232,6 +247,8 @@ dialog::backdrop { background: var(--bg); }
   text-align: center;
   color: #666;
 }
+
+.timeline-item.motion .timestamp { color: var(--motion); }
 
 .timeline-item.selected .timestamp { background: #222; color: var(--fg); }
 
@@ -285,7 +302,23 @@ dialog::backdrop { background: var(--bg); }
   height: 0.75rem;
   background: var(--fg);
   cursor: grab;
+  z-index: 2;
+}
+
+.scrubber-marks {
+  position: absolute;
+  inset: 0.3rem 0;
+  pointer-events: none;
   z-index: 1;
+}
+
+.scrubber-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--motion);
+  transform: translateX(-50%);
 }
 
 .scrubber-track.dragging .scrubber-bar,
@@ -366,6 +399,18 @@ dialog::backdrop { background: var(--bg); }
   right: 0.25rem;
   font-size: 0.45rem;
   opacity: 0.5;
+}
+
+.motion-count {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  background: var(--motion);
+  color: #fff;
 }
 
 .empty-day { background: transparent; }

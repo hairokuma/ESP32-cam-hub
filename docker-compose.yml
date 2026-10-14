@@ -2,6 +2,9 @@ services:
   app:
     build: .
     container_name: esp-cam
+    env_file:
+      - path: .env
+        required: false  # SMTP settings for motion mails, see .env.example
     environment:
       - UPLOAD_FOLDER=/data
       - NETWORK_PREFIX=192.168.2.

@@ -1,3 +1,4 @@
 /data
 config/credentials.h
 __pycache__/
+.env

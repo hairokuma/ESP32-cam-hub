@@ -6,16 +6,29 @@
 #include "credentials.h"  // WiFi credentials (not committed to git)
 
 // ============= CONFIGURATION =============
-const int uploadInterval = 10000;
+const unsigned long UPLOAD_INTERVAL_MS = 10000;
 const framesize_t CAMERA_FRAMESIZE = FRAMESIZE_XGA;
 const int CAMERA_QUALITY = 12;
 #define LED_PIN 4
+
+// Optional motion sensor: digital output that goes HIGH on motion, e.g. HC-SR501 PIR
+// (OUT -> GPIO 13, VCC -> 5V) or RCWL-0516 radar. GPIO 13 is free on the AI-Thinker board.
+// Leave at -1 for cameras without a sensor; set it here, in credentials.h or as a build flag
+// (-DMOTION_PIN=13) for cameras that have one.
+#ifndef MOTION_PIN
+#define MOTION_PIN -1
+#endif
+const bool HAS_MOTION_SENSOR = MOTION_PIN >= 0;
+// Minimum gap between uploads while motion is detected; in practice the upload time limits the
+// rate to a few frames per second, all of which appear in the hub's timeline.
+const unsigned long MOTION_FRAME_INTERVAL_MS = 250;
+const unsigned long MOTION_WARMUP_MS = 60000;    // PIR output is unreliable right after power-up
 
 // Self-recovery: reconnect or restart instead of hanging until someone power-cycles the camera
 const unsigned long WIFI_BOOT_TIMEOUT_MS = 60000;       // restart if WiFi doesn't connect at boot
 const unsigned long WIFI_RECONNECT_INTERVAL_MS = 30000; // retry while disconnected
 const unsigned long WIFI_RESTART_AFTER_MS = 300000;     // restart after 5 minutes without WiFi
-const int MAX_UPLOAD_FAILURES = 30;                     // ~5 minutes of failed uploads
+const int MAX_UPLOAD_FAILURES = 30;                     // ~5 minutes at the normal upload interval
 const int MAX_CAPTURE_FAILURES = 10;
 const int WATCHDOG_TIMEOUT_S = 60;                      // upload task hung (e.g. stuck in a socket call)
 
@@ -171,16 +184,48 @@ void startCameraServer(){
 }
 
 
+// ============= MOTION SENSOR =============
+// Without a sensor (MOTION_PIN -1) this always returns false and no interrupt is attached
+bool motionDetected(){
+#if MOTION_PIN >= 0
+  return millis() > MOTION_WARMUP_MS && digitalRead(MOTION_PIN) == HIGH;
+#else
+  return false;
+#endif
+}
+
+// Wake the upload task so the first motion image is taken right away
+void IRAM_ATTR onMotion(){
+  BaseType_t woken = pdFALSE;
+  if (uploadTaskHandle) vTaskNotifyGiveFromISR(uploadTaskHandle, &woken);
+  portYIELD_FROM_ISR(woken);
+}
+
+
 // ============= UPLOAD TASK =============
 void uploadTask(void * parameter){
   int uploadFailures = 0;
   int captureFailures = 0;
+  unsigned long lastUpload = 0;
+  // Kept across uploads so the connection to the hub is reused (keep-alive): saves the TCP
+  // handshake per frame, which matters during motion bursts. It reconnects by itself if closed.
+  HTTPClient http;
+  http.setReuse(true);
   esp_task_wdt_add(NULL);
 
   while(true){
     esp_task_wdt_reset();
-    vTaskDelay(pdMS_TO_TICKS(uploadInterval));
-    esp_task_wdt_reset();
+
+    // Upload every UPLOAD_INTERVAL_MS, or as fast as possible while motion is detected.
+    // The motion interrupt ends the wait early so the interval is re-evaluated immediately.
+    bool motion = motionDetected();
+    unsigned long interval = motion ? MOTION_FRAME_INTERVAL_MS : UPLOAD_INTERVAL_MS;
+    unsigned long elapsed = millis() - lastUpload;
+    if (elapsed < interval){
+      ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(interval - elapsed));
+      continue;
+    }
+    lastUpload = millis();
 
     // WiFi outages are handled in loop(); don't count them as upload failures
     if (WiFi.status() != WL_CONNECTED) continue;
@@ -193,7 +238,6 @@ void uploadTask(void * parameter){
     }
     captureFailures = 0;
 
-    HTTPClient http;
     http.begin(serverUrl);
     http.addHeader("Content-Type", "image/jpeg");
     http.addHeader("X-RSSI", String(WiFi.RSSI()));
@@ -201,6 +245,8 @@ void uploadTask(void * parameter){
     http.addHeader("X-Min-Free-Heap", String(ESP.getMinFreeHeap()));
     http.addHeader("X-Uptime", String(millis() / 1000));
     http.addHeader("X-Reset-Reason", bootReason);
+    if (HAS_MOTION_SENSOR) http.addHeader("X-Motion-Sensor", "1");  // lets the hub show motion info
+    if (motion) http.addHeader("X-Motion", "1");
     http.setTimeout(10000);
 
     int response = http.POST(fb->buf, fb->len);
@@ -324,6 +370,12 @@ void setup(){
 
   xTaskCreatePinnedToCore(uploadTask, "UploadTask", 10000, NULL, 1, &uploadTaskHandle, 0);
   Serial.println("Upload task started");
+
+#if MOTION_PIN >= 0
+  pinMode(MOTION_PIN, INPUT_PULLDOWN);  // stays LOW if the sensor is disconnected
+  attachInterrupt(digitalPinToInterrupt(MOTION_PIN), onMotion, RISING);
+  Serial.printf("Motion sensor on GPIO %d\n", MOTION_PIN);
+#endif
 }
 
 // ============= LOOP =============

@@ -14,6 +14,7 @@
       <header>
         <span class="status-dot" data-online="{{ 'true' if camera.online else 'false' }}"></span>
         <span>{{ camera.ip }}</span>
+        <span class="motion-badge" hidden></span>
         <nav>
           <button onclick="toggleLED('{{camera.id}}', event)">LED</button>
           <button onclick="reloadStream('{{camera.id}}', event)">&#8635;</button>
@@ -43,6 +44,7 @@
     <div class="timeline-container">
       <div class="batch-container" id="batchContainer"></div>
       <div class="scrubber-track" id="scrubberTrack">
+        <div class="scrubber-marks" id="scrubberMarks"></div>
         <div class="scrubber-bar" id="scrubberBar">
           <div class="scrubber-tooltip" id="scrubberTooltip"></div>
         </div>

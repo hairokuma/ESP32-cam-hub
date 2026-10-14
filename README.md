@@ -10,6 +10,7 @@ A complete multi-camera streaming and image capture system for ESP32-CAM modules
 - ✅ **Non-blocking uploads** using FreeRTOS tasks
 - ✅ **Minimal stream interruption** (~300ms during HQ capture)
 - ✅ **Self-recovery**: reconnects WiFi and restarts itself after prolonged WiFi, upload or capture failures, plus a watchdog for hung uploads
+- ✅ **Optional motion sensor** (PIR / radar): uploads frames as fast as possible while motion is detected (over a kept-open connection); the hub mails the first image and shows every frame in the timeline
 - ✅ **Diagnostics** (signal strength, free memory, uptime, restart reason) sent with every upload and logged by the server
 
 ### Web Interface Features
@@ -54,6 +55,88 @@ const char* password = "your-wifi-password";
 const char* serverUrl = "http://192.168.2.38:5000/upload";
 ```
 
+### Optional: Motion Sensor
+The sensor is optional: cameras without one work as before and show no motion information.
+Camera-based motion detection suffers from sensor noise and lighting changes, so a dedicated
+sensor is used instead. Any sensor with a digital output that goes HIGH on motion works,
+e.g. an **HC-SR501 PIR** or **RCWL-0516 radar** module:
+
+```mermaid
+flowchart LR
+    PSU["5 V power supply<br/>(≥ 2 A)"]
+
+    subgraph PIR["HC-SR501 PIR sensor"]
+        PIR_VCC["VCC"]
+        PIR_OUT["OUT"]
+        PIR_GND["GND"]
+    end
+
+    subgraph CAM["ESP32-CAM (AI-Thinker)"]
+        CAM_5V["5V"]
+        CAM_IO13["GPIO 13"]
+        CAM_GND["GND"]
+    end
+
+    PSU -- "+5 V" --> CAM_5V
+    PSU -- "+5 V" --> PIR_VCC
+    PIR_OUT -- "3.3 V signal<br/>(HIGH = motion)" --> CAM_IO13
+    PIR_GND --- CAM_GND
+    PSU -- "GND" --- CAM_GND
+
+    linkStyle 0,1 stroke:#e5484d,stroke-width:2px
+    linkStyle 2 stroke:#e5a50a,stroke-width:2px
+    linkStyle 3,4 stroke:#888,stroke-width:2px
+```
+
+| Sensor | ESP32-CAM (AI-Thinker) |
+|--------|------------------------|
+| VCC    | 5V |
+| GND    | GND next to 5V (the same GND as the power supply) |
+| OUT    | GPIO 13 |
+
+> **Use the GND pin next to 5V.** Not every header pin labelled GND is connected to ground on
+> all ESP32-CAM boards. With the sensor on such a pin its output never goes LOW, so every image
+> is flagged as motion. If in doubt, check with a multimeter that the pin has continuity with
+> the power supply's ground.
+
+The sensor's output is 3.3 V, so it connects directly to the GPIO without a level shifter.
+Then enable it for that camera, either in `esp-cam4.ino` or in its `credentials.h`:
+
+```cpp
+#define MOTION_PIN 13   // -1 (default) = no sensor
+```
+
+- While motion is detected the camera uploads frames as fast as it can (a few per second instead
+  of one every 10 s); these images are saved as `HH-MM-SS-mmm_m.jpg`, highlighted red in the
+  timeline, marked on the scrubber and get a red timestamp in the daily video, where they play at
+  the same timelapse speed as all other images
+- The first image of a motion event is mailed to you (see [Motion mails](#optional-motion-mails))
+- The camera keeps its connection to the hub open between uploads (HTTP keep-alive), which saves
+  the connection setup per frame and raises the frame rate during motion
+- Cameras with a sensor show a motion badge in the grid (pulsing red while motion is detected,
+  otherwise today's number of motion events), and the calendar shows the number of motion
+  events per day. A motion event is a run of consecutive motion images
+- The PIR needs about a minute to settle after power-up; triggers during that time are ignored
+- HC-SR501: set the jumper to repeat trigger (H) and turn the time-delay pot to its minimum.
+  If it triggers falsely, move it a few cm away from the ESP32's antenna (WiFi interference)
+
+### Optional: Motion Mails
+The hub mails the first image of each motion event. Copy `.env.example` to `.env` next to
+`docker-compose.yml` and fill in your SMTP server and the recipients, then restart the container
+(`docker compose up -d`). Without `SMTP_HOST` and `MAIL_TO`, no mails are sent.
+
+| Variable | Meaning |
+|----------|---------|
+| `SMTP_HOST`, `SMTP_PORT` | SMTP server, e.g. port 587 with STARTTLS or 465 with SSL |
+| `SMTP_SECURITY` | `starttls` (default), `ssl` or `none` |
+| `SMTP_USER`, `SMTP_PASSWORD` | Login; leave the user empty for servers without authentication |
+| `MAIL_FROM` | Sender address, defaults to `SMTP_USER` |
+| `MAIL_TO` | Recipients, comma-separated |
+| `MAIL_COOLDOWN_MINUTES` | At most one mail per camera within this time (default 5) |
+| `HUB_URL` | Hub address for the timeline link in the mail, e.g. `http://192.168.2.38:5000` |
+
+`env_file` with `required: false` needs Docker Compose 2.24 or newer.
+
 ### 3. Upload to ESP32
 
 1. Open `esp-cam4.ino` in Arduino IDE
@@ -80,6 +163,8 @@ http://192.168.2.38:5000
 - **Captured Images**: View high-quality captured images
 - **Timeline**: Scroll through all captured images at the bottom
 - Click any thumbnail to display that image
+- **← / →**: previous / next image
+- **M / Shift+M**: jump to the next / previous motion event (cameras with a motion sensor)
 - Press **ESC** or click **×** to close
 
 ## File Structure
@@ -129,9 +214,11 @@ KEEP_LAST_N_IMAGES = 100          # Images to keep per camera
 
 ### ESP32 (`esp-cam4.ino`)
 ```cpp
-const int uploadInterval = 60000;  // Upload every 60 seconds
-FRAMESIZE_QVGA                     // Stream resolution
-FRAMESIZE_UXGA                     // Capture resolution
+const unsigned long UPLOAD_INTERVAL_MS = 10000;  // Upload every 10 seconds
+const framesize_t CAMERA_FRAMESIZE = FRAMESIZE_XGA;
+const int CAMERA_QUALITY = 12;                   // Lower = better quality
+#define MOTION_PIN -1                            // GPIO of the optional motion sensor
+const unsigned long MOTION_FRAME_INTERVAL_MS = 250;  // Minimum upload gap while motion is detected
 ```
 
 ### Frontend (`static/script.js`)
