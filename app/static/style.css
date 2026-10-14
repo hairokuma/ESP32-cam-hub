@@ -417,6 +417,11 @@ dialog::backdrop { background: var(--bg); }
 
 /* ── Video Dialog ───────────────────────────────────────── */
 
+/* Only the frames near the viewport exist, positioned inside a sizer as wide as all of them */
+.timeline-sizer { position: relative; flex: none; }
+
+.timeline-sizer .timeline-item { position: absolute; top: 0; }
+
 .video-info {
   display: flex;
   justify-content: center;

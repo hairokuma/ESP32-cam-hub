@@ -65,9 +65,9 @@ class TimelineInstance {
 
   render() {
     this.renderBatches();
-    this.timeline.replaceChildren(...this.images.map((image, i) => this._createItem(image, i)));
+    this.selectedEl = null;
+    this._renderItems();
     this._renderMotionMarks();
-    this.initLazyLoad();
     // Centering the first or last item scrolls to the strip's start or end, which the scroll position maps to as well
     this.displayImage(this._initialIndex(), 'instant');
   }
@@ -75,6 +75,19 @@ class TimelineInstance {
   // Start at the newest image
   _initialIndex() {
     return this.images.length - 1;
+  }
+
+  _renderItems() {
+    this.timeline.replaceChildren(...this.images.map((image, i) => this._createItem(image, i)));
+    this.initLazyLoad();
+  }
+
+  _itemEl(i) {
+    return this.timeline.querySelector(`.timeline-item[data-item="${i}"]`);
+  }
+
+  _scrollToItem(i, scroll) {
+    this.selectedEl?.scrollIntoView({ behavior: scroll === 'instant' ? 'instant' : 'smooth', block: 'nearest', inline: 'center' });
   }
 
   renderBatches() {
@@ -195,16 +208,12 @@ class TimelineInstance {
       this.scrubberTooltip.textContent = this.images[i].timestamp;
       this._showItem(i);
 
-      this.timeline.querySelectorAll('.timeline-item.selected')
-        .forEach(el => el.classList.remove('selected'));
-
-      const activeItem = this.timeline.querySelector(`.timeline-item[data-item="${i}"]`);
-      if (activeItem) {
-        activeItem.classList.add('selected');
-        if (scroll) {
-          this._ignoreScrollUntilIdle();
-          activeItem.scrollIntoView({ behavior: scroll === 'instant' ? 'instant' : 'smooth', block: 'nearest', inline: 'center' });
-        }
+      this.selectedEl?.classList.remove('selected');
+      this.selectedEl = this._itemEl(i);
+      this.selectedEl?.classList.add('selected');
+      if (scroll) {
+        this._ignoreScrollUntilIdle();
+        this._scrollToItem(i, scroll);
       }
     }
 
@@ -335,6 +344,7 @@ class TimelineInstance {
     this.batchContainer?.replaceChildren();
     this.scrubberMarks.innerHTML = '';
     this.stageEl.querySelector('img')?.remove();
+    this.selectedEl = null;
     this.index = -1;
   }
 }
