@@ -6,6 +6,8 @@ class TimelineInstance {
     this.currentBatch = 0;
     this.index = -1;
     this.isDragging = false;
+    this.autoScrolling = false; // true while scrollIntoView is moving the strip
+    this.autoScrollTimer = null;
     this.observer = null;
 
     this.stageEl = document.getElementById('timelineActive');
@@ -71,9 +73,10 @@ class TimelineInstance {
 
     this.timeline.replaceChildren(...this.images.map((image, i) => this._createItem(image, i)));
 
-    this.timeline.scrollLeft = this.timeline.scrollWidth;
+    // Jump to the newest image; at the scroll end the scroll position maps to it as well
+    this.timeline.scrollTo({ left: this.timeline.scrollWidth, behavior: 'instant' });
     this.initLazyLoad();
-    setTimeout(() => this.displayImage(this.images.length - 1), 200);
+    this.displayImage(this.images.length - 1, false);
   }
 
   _createItem(image, i) {
@@ -154,21 +157,41 @@ class TimelineInstance {
       if (activeItem) {
         activeItem.classList.add('selected');
         if (scroll) {
+          this._ignoreScrollUntilIdle();
           activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
       }
     }
 
+    this._updateScrubber();
+  }
+
+  _scrollFraction() {
     const maxScroll = this.timeline.scrollWidth - this.timeline.clientWidth;
-    const pct = maxScroll > 0 ? this.timeline.scrollLeft / maxScroll : 0;
-    this.scrubberBar.style.left = `calc(${pct * 100}% - 0.375rem)`;
+    return maxScroll > 0 ? this.timeline.scrollLeft / maxScroll : 0;
+  }
+
+  _updateScrubber() {
+    this.scrubberBar.style.left = `calc(${this._scrollFraction() * 100}% - 0.375rem)`;
+  }
+
+  // Scroll events caused by scrollIntoView must not change the selection.
+  // Smooth scrolling fires an event every frame, so 150ms without one means it has finished.
+  _ignoreScrollUntilIdle() {
+    this.autoScrolling = true;
+    clearTimeout(this.autoScrollTimer);
+    this.autoScrollTimer = setTimeout(() => { this.autoScrolling = false; }, 150);
   }
 
   handleTimelineScroll() {
     if (!this.images.length) return;
-    const center = this.timeline.scrollLeft + this.timeline.clientWidth / 2;
-    const pct = this.timeline.scrollWidth > 0 ? center / this.timeline.scrollWidth : 0;
-    this.displayImage(Math.round(pct * (this.images.length - 1)), false);
+    if (this.autoScrolling) {
+      this._ignoreScrollUntilIdle();
+      this._updateScrubber();
+      return;
+    }
+    // Scroll start selects the first image, scroll end the last (same mapping as the scrubber)
+    this.displayImage(Math.round(this._scrollFraction() * (this.images.length - 1)), false);
   }
 
   handleScrubberDrag(e) {
@@ -181,6 +204,7 @@ class TimelineInstance {
   setupEventListeners() {
     const startDrag = (e) => {
       this.isDragging = true;
+      this.autoScrolling = false;
       this.scrubberTrack.classList.add('dragging');
       this.handleScrubberDrag(e);
     };
