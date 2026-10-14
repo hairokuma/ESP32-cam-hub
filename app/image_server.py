@@ -4,6 +4,7 @@ ESP32-CAM Image Upload Server
 Receives images from ESP32 cameras, serves the web UI and builds daily videos
 """
 
+import json
 import os
 import subprocess
 import traceback
@@ -24,6 +25,7 @@ VIDEO_FPS = 24
 MIN_VIDEO_IMAGES = 10
 BATCH_SIZE = 1000  # Timeline images per batch
 ONLINE_THRESHOLD = timedelta(minutes=5)
+MOTION_ACTIVE_THRESHOLD = timedelta(seconds=30)  # Motion images arrive every 2 s while motion lasts
 FONT_PATH = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
 DIAGNOSTIC_HEADERS = ('RSSI', 'Free-Heap', 'Min-Free-Heap', 'Uptime', 'Reset-Reason')  # Sent by the firmware
 
@@ -72,6 +74,24 @@ def image_time(path):
 
 def is_motion(path):
     return path.stem.endswith(MOTION_SUFFIX)
+
+
+def motion_event_times(images):
+    """Start time of each motion event, i.e. each run of consecutive motion images"""
+    return [
+        image_time(path) for i, path in enumerate(images)
+        if is_motion(path) and (i == 0 or not is_motion(images[i - 1]))
+    ]
+
+
+def motion_sensor_marker(camera_id):
+    """Exists while the camera's firmware reports a motion sensor (not every camera has one)"""
+    return UPLOAD_FOLDER / str(camera_id) / 'motion-sensor'
+
+
+def motion_summary_file(camera_id, date):
+    """Motion events of a day, kept next to its video because the images are deleted"""
+    return videos_dir(camera_id) / f'{date}.json'
 
 
 def image_info(camera_id, path):
@@ -137,6 +157,7 @@ def generate_daily_video(camera_id, date):
         output.unlink(missing_ok=True)
         return False
 
+    motion_summary_file(camera_id, date).write_text(json.dumps({'motion_events': motion_event_times(images)}))
     for path in images:
         path.unlink()
     print(f"✓ Generated {output}, deleted {len(images)} images")
@@ -168,6 +189,12 @@ def upload_image():
     filename = now.strftime('%H-%M-%S') + (MOTION_SUFFIX if motion else '') + '.jpg'
     (folder / filename).write_bytes(image_data)
 
+    marker = motion_sensor_marker(camera_id)
+    if request.headers.get('X-Motion-Sensor') == '1':
+        marker.touch()
+    else:
+        marker.unlink(missing_ok=True)
+
     diagnostics = {h: request.headers[f'X-{h}'] for h in DIAGNOSTIC_HEADERS if f'X-{h}' in request.headers}
     details = ' '.join(f'{h.lower()}={v}' for h, v in diagnostics.items())
     print(f"✓ Camera {camera_id}: {folder.name}/{filename} ({len(image_data)} bytes) {details}".rstrip())
@@ -182,6 +209,8 @@ def get_camera_status(camera_id):
     images = list_images(camera_id, today())
     latest = images[-1] if images else None
     latest_time = datetime.fromtimestamp(latest.stat().st_mtime) if latest else None
+    motion_images = [p for p in images if is_motion(p)]
+    last_motion = datetime.fromtimestamp(motion_images[-1].stat().st_mtime) if motion_images else None
     return {
         'id': camera_id,
         'ip': f'{NETWORK_PREFIX}{camera_id}',
@@ -189,7 +218,11 @@ def get_camera_status(camera_id):
         'latestTime': latest_time.strftime('%d.%m.%Y %H:%M:%S') if latest else None,
         'latestImage': image_info(camera_id, latest) if latest else None,
         'streamUrl': camera_url(camera_id, 'stream'),
-        'online': latest is not None and datetime.now() - latest_time < ONLINE_THRESHOLD
+        'online': latest is not None and datetime.now() - latest_time < ONLINE_THRESHOLD,
+        'motionSensor': motion_sensor_marker(camera_id).exists(),
+        'motionEvents': len(motion_event_times(images)),
+        'lastMotion': last_motion.strftime('%H:%M:%S') if last_motion else None,
+        'motionActive': last_motion is not None and datetime.now() - last_motion < MOTION_ACTIVE_THRESHOLD
     }
 
 
@@ -267,12 +300,20 @@ def control_led(camera_id):
 
 @app.route('/api/calendar/<int:camera_id>')
 def get_calendar_data(camera_id):
-    """Days that have a video, oldest first"""
+    """Days that have a video (oldest first) and the number of motion events per day"""
     videos = [
         {'date': v.stem, 'size_mb': round(v.stat().st_size / 2**20, 2)}
         for v in sorted(videos_dir(camera_id).glob('*.mp4'))
     ]
-    return jsonify({'camera_id': camera_id, 'videos': videos})
+    motion = {}
+    for summary in videos_dir(camera_id).glob('*.json'):
+        events = json.loads(summary.read_text()).get('motion_events', [])
+        if events:
+            motion[summary.stem] = len(events)
+    today_events = motion_event_times(list_images(camera_id, today()))
+    if today_events:
+        motion[today()] = len(today_events)
+    return jsonify({'camera_id': camera_id, 'videos': videos, 'motion': motion})
 
 
 @app.route('/video/<int:camera_id>/<date>')

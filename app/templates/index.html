@@ -14,6 +14,7 @@
       <header>
         <span class="status-dot" data-online="{{ 'true' if camera.online else 'false' }}"></span>
         <span>{{ camera.ip }}</span>
+        <span class="motion-badge" hidden></span>
         <nav>
           <button onclick="toggleLED('{{camera.id}}', event)">LED</button>
           <button onclick="reloadStream('{{camera.id}}', event)">&#8635;</button>

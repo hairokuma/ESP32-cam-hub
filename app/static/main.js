@@ -118,6 +118,7 @@ function getCameraStats() {
       if (!card) return;
       card.querySelector('footer').textContent = `${camera.imageCount} Aufnahmen · ${camera.latestTime}`;
       card.querySelector('.status-dot').dataset.online = camera.online;
+      updateMotionBadge(card.querySelector('.motion-badge'), camera);
 
       const prev = cameraImageCounts[camera.id];
       cameraImageCounts[camera.id] = camera.imageCount;
@@ -130,6 +131,19 @@ function getCameraStats() {
       }
     });
   }).catch(console.error);
+}
+
+// Only cameras with a motion sensor show the badge
+function updateMotionBadge(badge, camera) {
+  badge.hidden = !camera.motionSensor;
+  if (!camera.motionSensor) return;
+  badge.dataset.active = camera.motionActive;
+  badge.textContent = camera.motionActive ? 'Bewegung' : motionCountText(camera.motionEvents);
+  badge.title = camera.lastMotion ? `Bewegungen heute: ${camera.motionEvents} · zuletzt ${camera.lastMotion}` : 'Heute keine Bewegung';
+}
+
+function motionCountText(count) {
+  return count === 1 ? '1 Bewegung' : `${count} Bewegungen`;
 }
 
 // ── LED ──────────────────────────────────────────────────
@@ -158,6 +172,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  getCameraStats();
   setInterval(getCameraStats, 10000);
   handleRoute();
 });

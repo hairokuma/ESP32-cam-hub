@@ -6,6 +6,7 @@ class CalendarInstance {
     this.currentDate = new Date();
     this.videoData = {};   // date -> video info
     this.sortedDates = []; // chronological, oldest first
+    this.motion = {};      // date -> number of motion events
     this.dialog = document.getElementById('calendarDialog');
     this.grid = this.dialog.querySelector('.calendar-grid');
     this.dayNames = [...this.grid.querySelectorAll('.day-name')];
@@ -18,6 +19,7 @@ class CalendarInstance {
       const videos = data.videos || [];
       this.videoData = Object.fromEntries(videos.map(v => [v.date, v]));
       this.sortedDates = videos.map(v => v.date);
+      this.motion = data.motion || {};
       this.render();
     } catch (e) {
       console.error('Calendar load failed:', e);
@@ -69,6 +71,15 @@ class CalendarInstance {
         el.onclick = () => navigate(`#video/${this.cameraId}/${dateStr}`);
       }
 
+      const motionEvents = this.motion[dateStr];
+      if (motionEvents) {
+        const badge = document.createElement('span');
+        badge.className = 'motion-count';
+        badge.textContent = motionEvents;
+        el.appendChild(badge);
+        el.title = [el.title, motionCountText(motionEvents)].filter(Boolean).join(' · ');
+      }
+
       this.grid.appendChild(el);
     }
   }
@@ -99,7 +110,11 @@ function openVideoView(cameraId, dateStr) {
   document.getElementById('videoDate').textContent = `${day}.${month}.${year}`;
 
   const meta = window.calendarInstance?.videoData?.[dateStr];
-  document.getElementById('videoSize').textContent = meta ? `${meta.size_mb} MB` : '';
+  const motionEvents = window.calendarInstance?.motion?.[dateStr];
+  document.getElementById('videoSize').textContent = [
+    meta && `${meta.size_mb} MB`,
+    motionEvents && motionCountText(motionEvents)
+  ].filter(Boolean).join(' · ');
 
   const dates = window.calendarInstance?.sortedDates || [];
   const idx = dates.indexOf(dateStr);

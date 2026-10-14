@@ -99,8 +99,24 @@ class TimelineInstance {
     return item;
   }
 
+  // Motion events are runs of consecutive motion images (same definition as the server's count)
+  _motionEventStarts() {
+    return this.images.flatMap((image, i) => image.motion && !this.images[i - 1]?.motion ? [i] : []);
+  }
+
+  jumpToMotion(direction) {
+    const starts = this._motionEventStarts();
+    const target = direction > 0
+      ? starts.find(i => i > this.index)
+      : starts.findLast(i => i < this.index);
+    if (target !== undefined) this.displayImage(target);
+  }
+
   // One tick per motion image, at the scrubber position that selects it
   _renderMotionMarks() {
+    this.scrubberTrack.title = this.images.some(image => image.motion)
+      ? 'M / Shift+M: nächste / vorherige Bewegung'
+      : '';
     const last = Math.max(1, this.images.length - 1);
     this.scrubberMarks.replaceChildren(...this.images.flatMap((image, i) => {
       if (!image.motion) return [];
@@ -237,6 +253,9 @@ class TimelineInstance {
       if (!document.getElementById('timelineDialog').open) return;
       if (e.key === 'ArrowLeft') { e.preventDefault(); this.displayImage(this.index - 1); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); this.displayImage(this.index + 1); }
+      else if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        this.jumpToMotion(e.shiftKey ? -1 : 1);
+      }
     };
 
     document.addEventListener('keydown', onKey);

@@ -74,6 +74,18 @@ body:has(dialog[open]) { overflow: hidden; }
 }
 .status-dot[data-online="true"] { background: var(--fg); }
 
+.motion-badge { color: #666; }
+
+.motion-badge[data-active="true"] { color: var(--motion); }
+
+.motion-badge[data-active="true"]::before {
+  content: '●';
+  margin-right: 0.3rem;
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse { to { opacity: 0.2; } }
+
 .stream-wrap { position: relative; }
 
 .stream-label {
@@ -387,6 +399,18 @@ dialog::backdrop { background: var(--bg); }
   right: 0.25rem;
   font-size: 0.45rem;
   opacity: 0.5;
+}
+
+.motion-count {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  background: var(--motion);
+  color: #fff;
 }
 
 .empty-day { background: transparent; }
