@@ -56,9 +56,37 @@ const char* serverUrl = "http://192.168.2.38:5000/upload";
 ```
 
 ### Optional: Motion Sensor
+The sensor is optional: cameras without one work as before and show no motion information.
 Camera-based motion detection suffers from sensor noise and lighting changes, so a dedicated
 sensor is used instead. Any sensor with a digital output that goes HIGH on motion works,
 e.g. an **HC-SR501 PIR** or **RCWL-0516 radar** module:
+
+```mermaid
+flowchart LR
+    PSU["5 V power supply<br/>(≥ 2 A)"]
+
+    subgraph PIR["HC-SR501 PIR sensor"]
+        PIR_VCC["VCC"]
+        PIR_OUT["OUT"]
+        PIR_GND["GND"]
+    end
+
+    subgraph CAM["ESP32-CAM (AI-Thinker)"]
+        CAM_5V["5V"]
+        CAM_IO13["GPIO 13"]
+        CAM_GND["GND"]
+    end
+
+    PSU -- "+5 V" --> CAM_5V
+    PSU -- "+5 V" --> PIR_VCC
+    PIR_OUT -- "3.3 V signal<br/>(HIGH = motion)" --> CAM_IO13
+    PIR_GND --- CAM_GND
+    PSU -- "GND" --- CAM_GND
+
+    linkStyle 0,1 stroke:#e5484d,stroke-width:2px
+    linkStyle 2 stroke:#e5a50a,stroke-width:2px
+    linkStyle 3,4 stroke:#888,stroke-width:2px
+```
 
 | Sensor | ESP32-CAM (AI-Thinker) |
 |--------|------------------------|
@@ -66,11 +94,19 @@ e.g. an **HC-SR501 PIR** or **RCWL-0516 radar** module:
 | GND    | GND |
 | OUT    | GPIO 13 |
 
-Then set `#define MOTION_PIN 13` in `esp-cam4.ino` (leave it at `-1` for cameras without a sensor).
+The sensor's output is 3.3 V, so it connects directly to the GPIO without a level shifter.
+Then enable it for that camera, either in `esp-cam4.ino` or in its `credentials.h`:
+
+```cpp
+#define MOTION_PIN 13   // -1 (default) = no sensor
+```
 
 - While motion is detected the camera uploads every 2 s (instead of 10 s); these images are
   saved as `HH-MM-SS_m.jpg`, highlighted red in the timeline, marked on the scrubber and get a
   red timestamp in the daily video
+- Cameras with a sensor show a motion badge in the grid (pulsing red while motion is detected,
+  otherwise today's number of motion events), and the calendar shows the number of motion
+  events per day. A motion event is a run of consecutive motion images
 - The PIR needs about a minute to settle after power-up; triggers during that time are ignored
 - HC-SR501: set the jumper to repeat trigger (H) and turn the time-delay pot to its minimum.
   If it triggers falsely, move it a few cm away from the ESP32's antenna (WiFi interference)
@@ -101,6 +137,8 @@ http://192.168.2.38:5000
 - **Captured Images**: View high-quality captured images
 - **Timeline**: Scroll through all captured images at the bottom
 - Click any thumbnail to display that image
+- **← / →**: previous / next image
+- **M / Shift+M**: jump to the next / previous motion event (cameras with a motion sensor)
 - Press **ESC** or click **×** to close
 
 ## File Structure
@@ -150,9 +188,11 @@ KEEP_LAST_N_IMAGES = 100          # Images to keep per camera
 
 ### ESP32 (`esp-cam4.ino`)
 ```cpp
-const int uploadInterval = 60000;  // Upload every 60 seconds
-FRAMESIZE_QVGA                     // Stream resolution
-FRAMESIZE_UXGA                     // Capture resolution
+const unsigned long UPLOAD_INTERVAL_MS = 10000;  // Upload every 10 seconds
+const framesize_t CAMERA_FRAMESIZE = FRAMESIZE_XGA;
+const int CAMERA_QUALITY = 12;                   // Lower = better quality
+#define MOTION_PIN -1                            // GPIO of the optional motion sensor
+const unsigned long MOTION_INTERVAL_MS = 2000;   // Upload interval while motion is detected
 ```
 
 ### Frontend (`static/script.js`)
