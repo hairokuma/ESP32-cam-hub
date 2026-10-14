@@ -6,6 +6,7 @@ Receives images from ESP32 cameras, serves the web UI and builds daily videos
 
 import json
 import os
+import shutil
 import subprocess
 import threading
 import traceback
@@ -15,7 +16,7 @@ from pathlib import Path
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 from waitress import serve
 
 import notify
@@ -123,7 +124,7 @@ def stamp_time(img, text, font, motion=False):
 
 
 def generate_daily_video(camera_id, date):
-    """Encode all images of a day into a timestamped video, then delete the images"""
+    """Encode all images of a day into a timestamped video and its thumbnail sheets, then delete the images"""
     images = list_images(camera_id, date)
     if len(images) < MIN_VIDEO_IMAGES:
         print(f"✗ {camera_id}/{date}: only {len(images)} images, need at least {MIN_VIDEO_IMAGES}")
@@ -145,12 +146,26 @@ def generate_daily_video(camera_id, date):
         str(output)
     ], stdin=subprocess.PIPE)
 
+    # Thumbnails are cut from the already opened images, so the server never has to decode the video for them
+    thumbs_dir = thumb_sheet_file(camera_id, date, 0).parent
+    shutil.rmtree(thumbs_dir, ignore_errors=True)
+    thumbs_dir.mkdir(parents=True)
+    per_sheet = THUMB_COLS * THUMB_ROWS
+
     print(f"Encoding {len(images)} images for {camera_id}/{date}...")
     try:
-        for path in images:
+        for i, path in enumerate(images):
             with Image.open(path) as img:
                 stamp_time(img, image_time(path), font, is_motion(path))
                 img.save(ffmpeg.stdin, 'JPEG', quality=95)
+
+                tile = i % per_sheet
+                if tile == 0:
+                    sheet = Image.new('RGB', (THUMB_COLS * THUMB_WIDTH, THUMB_ROWS * THUMB_HEIGHT))
+                thumb = ImageOps.fit(img.convert('RGB'), (THUMB_WIDTH, THUMB_HEIGHT), Image.Resampling.BILINEAR)
+                sheet.paste(thumb, ((tile % THUMB_COLS) * THUMB_WIDTH, (tile // THUMB_COLS) * THUMB_HEIGHT))
+            if tile == per_sheet - 1 or i == len(images) - 1:
+                sheet.save(thumb_sheet_file(camera_id, date, i // per_sheet), 'JPEG', quality=75)
         ffmpeg.stdin.close()
         success = ffmpeg.wait() == 0
     except Exception:
@@ -162,6 +177,7 @@ def generate_daily_video(camera_id, date):
     if not success:
         print(f"✗ Video generation failed for {camera_id}/{date}")
         output.unlink(missing_ok=True)
+        shutil.rmtree(thumbs_dir, ignore_errors=True)
         return False
 
     motion_summary_file(camera_id, date).write_text(json.dumps({
@@ -188,7 +204,7 @@ def thumb_sheet_file(camera_id, date, sheet):
 
 
 def generate_thumb_sheet(video, sheet, output):
-    """Tile THUMB_COLS x THUMB_ROWS consecutive frames of the video into one image"""
+    """Tile THUMB_COLS x THUMB_ROWS consecutive frames of the video into one image (for videos made without sheets)"""
     first = sheet * THUMB_COLS * THUMB_ROWS
     tmp = output.with_suffix('.tmp.jpg')
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -404,7 +420,7 @@ def get_video_data(camera_id, date):
 
 @app.route('/video/<int:camera_id>/<date>/thumbs/<int:sheet>.jpg')
 def serve_video_thumbs(camera_id, date, sheet):
-    """Thumbnail sheet of a video, cut from it on first request and kept"""
+    """Thumbnail sheet of a video; made with the video, or cut from it on first request for older videos"""
     video = videos_dir(camera_id) / f'{date}.mp4'
     if not video.is_file():
         return jsonify({'error': 'Video not found'}), 404
