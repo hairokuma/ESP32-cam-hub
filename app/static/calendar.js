@@ -1,11 +1,8 @@
-const VIDEO_FPS = 24; // must match VIDEO_FPS in image_server.py
-
 class CalendarInstance {
   constructor() {
     this.cameraId = null;
     this.currentDate = new Date();
     this.videoData = {};   // date -> video info
-    this.sortedDates = []; // chronological, oldest first
     this.motion = {};      // date -> number of motion events
     this.dialog = document.getElementById('calendarDialog');
     this.grid = this.dialog.querySelector('.calendar-grid');
@@ -18,7 +15,6 @@ class CalendarInstance {
       const data = await fetch(`/api/calendar/${cameraId}`).then(r => r.json());
       const videos = data.videos || [];
       this.videoData = Object.fromEntries(videos.map(v => [v.date, v]));
-      this.sortedDates = videos.map(v => v.date);
       this.motion = data.motion || {};
       this.render();
     } catch (e) {
@@ -101,40 +97,6 @@ function openCalendar(cameraId) {
   }
 }
 
-function openVideoView(cameraId, dateStr) {
-  const player = document.getElementById('videoPlayer');
-  player.src = `/video/${cameraId}/${dateStr}`;
-  player.load();
-
-  const [year, month, day] = dateStr.split('-');
-  document.getElementById('videoDate').textContent = `${day}.${month}.${year}`;
-
-  const meta = window.calendarInstance?.videoData?.[dateStr];
-  const motionEvents = window.calendarInstance?.motion?.[dateStr];
-  document.getElementById('videoSize').textContent = [
-    meta && `${meta.size_mb} MB`,
-    motionEvents && motionCountText(motionEvents)
-  ].filter(Boolean).join(' · ');
-
-  const dates = window.calendarInstance?.sortedDates || [];
-  const idx = dates.indexOf(dateStr);
-  document.getElementById('prevVideo').hidden = idx <= 0;
-  document.getElementById('nextVideo').hidden = idx < 0 || idx >= dates.length - 1;
-
-  document.getElementById('videoDialog').showModal();
-  player.play().catch(() => {});
-}
-
-function navigateVideo(direction) {
-  const hash = location.hash;
-  if (!hash.startsWith('#video/')) return;
-  const [cameraId, dateStr] = hash.slice(7).split('/');
-  const dates = window.calendarInstance?.sortedDates || [];
-  const newIdx = dates.indexOf(dateStr) + direction;
-  if (newIdx < 0 || newIdx >= dates.length) return;
-  navigate(`#video/${cameraId}/${dates[newIdx]}`);
-}
-
 function navigateMonth(direction) {
   window.calendarInstance?.changeMonth(direction);
 }
@@ -145,25 +107,3 @@ function goToToday() {
     window.calendarInstance.render();
   }
 }
-
-function stepVideoFrame(direction) {
-  const dialog = document.getElementById('videoDialog');
-  if (!dialog.open) return;
-  const player = document.getElementById('videoPlayer');
-  if (!player.paused) player.pause();
-  const step = direction / VIDEO_FPS;
-  player.currentTime = Math.max(0, Math.min(player.duration || 0, player.currentTime + step));
-}
-
-{
-  const player = document.getElementById('videoPlayer');
-  player.addEventListener('play',  () => { player.controls = true; });
-  player.addEventListener('pause', () => { player.controls = false; });
-  player.addEventListener('click', () => { if (player.paused) player.play().catch(() => {}); });
-}
-
-document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  if (e.key === '.') stepVideoFrame(1);
-  else if (e.key === ',') stepVideoFrame(-1);
-});

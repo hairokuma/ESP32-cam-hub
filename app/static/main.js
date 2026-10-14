@@ -25,9 +25,7 @@ function handleRoute() {
   }
   if (calendarDialog.open) calendarDialog.close();
   if (videoDialog.open) {
-    const player = document.getElementById('videoPlayer');
-    player.pause();
-    player.removeAttribute('src');
+    if (window.videoTimeline) window.videoTimeline.cleanup();
     videoDialog.close();
   }
 

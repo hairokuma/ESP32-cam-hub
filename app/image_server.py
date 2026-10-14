@@ -7,6 +7,7 @@ Receives images from ESP32 cameras, serves the web UI and builds daily videos
 import json
 import os
 import subprocess
+import threading
 import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -26,6 +27,8 @@ NETWORK_PREFIX = os.getenv('NETWORK_PREFIX', '192.168.2.')  # Adjust to your net
 UPLOAD_FOLDER = Path(os.getenv('UPLOAD_FOLDER', '/data'))
 VIDEO_FPS = 24
 MIN_VIDEO_IMAGES = 10
+THUMB_COLS, THUMB_ROWS = 10, 10  # Frames per thumbnail sheet of a video
+THUMB_WIDTH, THUMB_HEIGHT = 160, 120
 BATCH_SIZE = 1000  # Timeline images per batch
 ONLINE_THRESHOLD = timedelta(minutes=5)
 MOTION_ACTIVE_THRESHOLD = timedelta(seconds=30)  # Motion frames arrive several times a second while motion lasts
@@ -161,10 +164,46 @@ def generate_daily_video(camera_id, date):
         output.unlink(missing_ok=True)
         return False
 
-    motion_summary_file(camera_id, date).write_text(json.dumps({'motion_events': motion_event_times(images)}))
+    motion_summary_file(camera_id, date).write_text(json.dumps({
+        'motion_events': motion_event_times(images),
+        'frame_times': [image_time(path) for path in images],
+        'motion_frames': [i for i, path in enumerate(images) if is_motion(path)]
+    }))
     for path in images:
         path.unlink()
     print(f"✓ Generated {output}, deleted {len(images)} images")
+    return True
+
+
+def video_frame_count(video):
+    result = subprocess.run([
+        'ffprobe', '-v', 'error', '-select_streams', 'v:0',
+        '-show_entries', 'stream=nb_frames', '-of', 'csv=p=0', str(video)
+    ], capture_output=True, text=True)
+    return int(result.stdout.strip() or 0)
+
+
+def thumb_sheet_file(camera_id, date, sheet):
+    return videos_dir(camera_id) / 'thumbs' / date / f'{sheet}.jpg'
+
+
+def generate_thumb_sheet(video, sheet, output):
+    """Tile THUMB_COLS x THUMB_ROWS consecutive frames of the video into one image"""
+    first = sheet * THUMB_COLS * THUMB_ROWS
+    tmp = output.with_suffix('.tmp.jpg')
+    output.parent.mkdir(parents=True, exist_ok=True)
+    # Seek a quarter frame early so rounding can't skip the first frame
+    result = subprocess.run([
+        'ffmpeg', '-y', '-loglevel', 'error',
+        '-ss', f'{max(0, first - 0.25) / VIDEO_FPS:.4f}', '-i', str(video),
+        '-vf', f'scale={THUMB_WIDTH}:{THUMB_HEIGHT}:force_original_aspect_ratio=increase,'
+               f'crop={THUMB_WIDTH}:{THUMB_HEIGHT},tile={THUMB_COLS}x{THUMB_ROWS}',
+        '-frames:v', '1', '-update', '1', '-q:v', '5', str(tmp)
+    ])
+    if result.returncode != 0 or not tmp.is_file() or tmp.stat().st_size == 0:
+        tmp.unlink(missing_ok=True)
+        return False
+    tmp.rename(output)
     return True
 
 
@@ -179,6 +218,9 @@ def generate_videos_for_yesterday():
 
 # Whether each camera's previous upload was a motion image; a motion image after a normal one starts an event
 last_upload_motion = {}
+
+# Serializes thumbnail sheet generation, so scrubbing through a video doesn't start ffmpeg many times at once
+thumb_lock = threading.Lock()
 
 
 @app.route('/upload', methods=['POST'])
@@ -339,6 +381,38 @@ def get_calendar_data(camera_id):
 @app.route('/video/<int:camera_id>/<date>')
 def serve_video(camera_id, date):
     return send_from_directory(videos_dir(camera_id), f'{date}.mp4')
+
+
+@app.route('/api/video/<int:camera_id>/<date>')
+def get_video_data(camera_id, date):
+    """Timestamp and motion flag of every frame of a day's video, for its frame timeline"""
+    video = videos_dir(camera_id) / f'{date}.mp4'
+    if not video.is_file():
+        return jsonify({'error': 'Video not found'}), 404
+    summary_file = motion_summary_file(camera_id, date)
+    summary = json.loads(summary_file.read_text()) if summary_file.is_file() else {}
+    # Videos made before frame times were recorded only get frame numbers
+    times = summary.get('frame_times') or [f'#{n + 1}' for n in range(video_frame_count(video))]
+    motion = set(summary.get('motion_frames', []))
+    return jsonify({
+        'frames': [{'timestamp': t, 'motion': i in motion} for i, t in enumerate(times)],
+        'thumbs': {'cols': THUMB_COLS, 'rows': THUMB_ROWS},
+        'size_mb': round(video.stat().st_size / 2**20, 2),
+        'motion_events': len(summary.get('motion_events', []))
+    })
+
+
+@app.route('/video/<int:camera_id>/<date>/thumbs/<int:sheet>.jpg')
+def serve_video_thumbs(camera_id, date, sheet):
+    """Thumbnail sheet of a video, cut from it on first request and kept"""
+    video = videos_dir(camera_id) / f'{date}.mp4'
+    if not video.is_file():
+        return jsonify({'error': 'Video not found'}), 404
+    output = thumb_sheet_file(camera_id, date, sheet)
+    with thumb_lock:
+        if not output.is_file() and not generate_thumb_sheet(video, sheet, output):
+            return jsonify({'error': 'Thumbnails not available'}), 404
+    return send_from_directory(output.parent, output.name)
 
 
 if __name__ == '__main__':

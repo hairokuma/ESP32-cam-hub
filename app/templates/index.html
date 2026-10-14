@@ -37,19 +37,19 @@
 
   <dialog id="timelineDialog">
     <button class="btn-close" onclick="closeCurrentView()">&#10005;</button>
-    <div id="timelineActive" class="stage">
-      <button class="btn-nav btn-prev" id="prevImage">&#8249;</button>
-      <button class="btn-nav btn-next" id="nextImage">&#8250;</button>
+    <div class="stage">
+      <button class="btn-nav btn-prev">&#8249;</button>
+      <button class="btn-nav btn-next">&#8250;</button>
     </div>
     <div class="timeline-container">
-      <div class="batch-container" id="batchContainer"></div>
-      <div class="scrubber-track" id="scrubberTrack">
-        <div class="scrubber-marks" id="scrubberMarks"></div>
-        <div class="scrubber-bar" id="scrubberBar">
-          <div class="scrubber-tooltip" id="scrubberTooltip"></div>
+      <div class="batch-container"></div>
+      <div class="scrubber-track">
+        <div class="scrubber-marks"></div>
+        <div class="scrubber-bar">
+          <div class="scrubber-tooltip"></div>
         </div>
       </div>
-      <div class="timeline" id="timeline"></div>
+      <div class="timeline"></div>
     </div>
   </dialog>
 
@@ -76,21 +76,27 @@
 
   <dialog id="videoDialog">
     <button class="btn-close" onclick="closeCurrentView()">&#10005;</button>
-    <button class="btn-nav btn-prev" id="prevVideo" onclick="navigateVideo(-1)">&#8249;</button>
-    <button class="btn-nav btn-next" id="nextVideo" onclick="navigateVideo(1)">&#8250;</button>
-    <video id="videoPlayer"></video>
-    <div class="frame-controls">
-      <button class="btn-frame" onclick="stepVideoFrame(-1)" title="Vorheriges Bild (,)">&#8249;</button>
-      <button class="btn-frame" onclick="stepVideoFrame(1)" title="Nächstes Bild (.)">&#8250;</button>
+    <div class="stage">
+      <video></video>
     </div>
-    <footer>
-      <span id="videoDate"></span>
-      <span id="videoSize"></span>
-    </footer>
+    <div class="timeline-container">
+      <div class="scrubber-track">
+        <div class="scrubber-marks"></div>
+        <div class="scrubber-bar">
+          <div class="scrubber-tooltip"></div>
+        </div>
+      </div>
+      <div class="timeline"></div>
+      <footer class="video-info">
+        <span class="video-date"></span>
+        <span class="video-size"></span>
+      </footer>
+    </div>
   </dialog>
 
   <script src="/main.js"></script>
   <script src="/calendar.js"></script>
   <script src="/timeline.js"></script>
+  <script src="/video.js"></script>
 </body>
 </html>

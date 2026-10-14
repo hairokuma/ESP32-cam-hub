@@ -134,7 +134,6 @@ button:hover { background: var(--hover); border-color: var(--muted); }
 }
 
 .btn-close:hover,
-.btn-frame:hover,
 .btn-nav:hover { color: var(--fg); background: none; }
 
 .btn-close {
@@ -193,7 +192,8 @@ dialog::backdrop { background: var(--bg); }
   overflow: hidden;
 }
 
-.stage img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.stage img,
+.stage video { max-width: 100%; max-height: 100%; object-fit: contain; }
 
 /* ── Timeline ───────────────────────────────────────────── */
 
@@ -415,33 +415,12 @@ dialog::backdrop { background: var(--bg); }
 
 .empty-day { background: transparent; }
 
-.btn-nav[hidden] { display: none; }
-
 /* ── Video Dialog ───────────────────────────────────────── */
 
-#videoDialog {
-  align-items: center;
+.video-info {
+  display: flex;
   justify-content: center;
-  gap: 1rem;
-}
-
-#videoDialog video { max-width: 90vw; max-height: 78dvh; }
-
-#videoDialog footer { display: flex; gap: 2rem; font-size: 0.75rem; color: #555; }
-
-.frame-controls {
-  display: none;
-  gap: 1rem;
-}
-.btn-frame {
-  border: solid;
-  color: var(--muted);
-  padding: 1rem;
-  transition: color 0.15s;
-  font-size: 1.5rem;
-  line-height: .5rem;
-}
-
-@media (pointer: coarse) {
-  .frame-controls { display: flex; }
+  gap: 2rem;
+  font-size: 0.65rem;
+  color: #555;
 }
