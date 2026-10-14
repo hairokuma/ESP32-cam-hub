@@ -70,13 +70,13 @@ static esp_err_t led_handler(httpd_req_t *req){
       httpd_resp_set_type(req, "application/json");
       char resp[50];
       snprintf(resp, sizeof(resp), "{\"led\":\"%s\"}", ledState ? "on" : "off");
-      httpd_resp_send(req, resp, strlen(resp));
+      httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
       return ESP_OK;
     }
   }
   
   httpd_resp_set_type(req, "application/json");
-  httpd_resp_send(req, "{\"error\":\"Invalid request\"}", 25);
+  httpd_resp_send(req, "{\"error\":\"Invalid request\"}", HTTPD_RESP_USE_STRLEN);
   return ESP_FAIL;
 }
 

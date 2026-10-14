@@ -52,33 +52,39 @@ window.addEventListener('popstate', handleRoute);
 
 // ── Stream ───────────────────────────────────────────────
 
-function loadSingleStream(img, withTimeout) {
-  const url = img.dataset.streamUrl;
-  const label = img.closest('.stream-wrap').querySelector('.stream-label');
-  if (!url) return;
+function streamLabel(img) {
+  return img.closest('.stream-wrap').querySelector('.stream-label');
+}
 
-  if (img._streamTimeout) { clearTimeout(img._streamTimeout); img._streamTimeout = null; }
+// Stop a stream: cancel its timeout, detach handlers and show a blank image
+function resetStream(img) {
+  clearTimeout(img._streamTimeout);
+  img._streamTimeout = null;
   img.onload = null;
   img.onerror = null;
   img.src = BLANK;
+}
 
+function loadSingleStream(img, withTimeout) {
+  const url = img.dataset.streamUrl;
+  if (!url) return;
+  const label = streamLabel(img);
+
+  resetStream(img);
   label.textContent = 'Wird geladen…';
   img.onerror = () => {
-    clearTimeout(img._streamTimeout); img._streamTimeout = null;
+    clearTimeout(img._streamTimeout);
     label.textContent = 'Nicht erreichbar';
   };
   img.onload = () => {
-    clearTimeout(img._streamTimeout); img._streamTimeout = null;
+    clearTimeout(img._streamTimeout);
     label.textContent = '';
   };
   img.src = url;
 
   if (withTimeout) {
     img._streamTimeout = setTimeout(() => {
-      img._streamTimeout = null;
-      img.onload = null;
-      img.onerror = null;
-      img.src = BLANK;
+      resetStream(img);
       label.textContent = 'Timeout';
     }, 1000);
   }
@@ -90,11 +96,8 @@ function loadStream() {
 
 function unloadStream() {
   document.querySelectorAll('.camera-stream').forEach(img => {
-    if (img._streamTimeout) { clearTimeout(img._streamTimeout); img._streamTimeout = null; }
-    img.src = BLANK;
-    img.onload = null;
-    img.onerror = null;
-    img.closest('.stream-wrap').querySelector('.stream-label').textContent = 'Stream gestoppt';
+    resetStream(img);
+    streamLabel(img).textContent = 'Stream gestoppt';
   });
 }
 
