@@ -10,7 +10,7 @@ A complete multi-camera streaming and image capture system for ESP32-CAM modules
 - ✅ **Non-blocking uploads** using FreeRTOS tasks
 - ✅ **Minimal stream interruption** (~300ms during HQ capture)
 - ✅ **Self-recovery**: reconnects WiFi and restarts itself after prolonged WiFi, upload or capture failures, plus a watchdog for hung uploads
-- ✅ **Optional motion sensor** (PIR / radar): uploads frames as fast as possible while motion is detected; the hub mails the first image and turns the frames into a motion clip
+- ✅ **Optional motion sensor** (PIR / radar): uploads frames as fast as possible while motion is detected (over a kept-open connection); the hub mails the first image and shows every frame in the timeline
 - ✅ **Diagnostics** (signal strength, free memory, uptime, restart reason) sent with every upload and logged by the server
 
 ### Web Interface Features
@@ -111,10 +111,8 @@ Then enable it for that camera, either in `esp-cam4.ino` or in its `credentials.
   timeline, marked on the scrubber and get a red timestamp in the daily video, where they play at
   the same timelapse speed as all other images
 - The first image of a motion event is mailed to you (see [Motion mails](#optional-motion-mails))
-- Once the event has ended (a normal image follows, or no new frame for 20 s), the hub encodes its
-  frames into a real-time clip in `clips/<date>/`. The event's first image in the timeline gets a
-  ▶ badge and a **Clip abspielen** button (or press **P**); the video view of a day lists its clips.
-  Clips are kept when the day's images are deleted after the daily video is built
+- The camera keeps its connection to the hub open between uploads (HTTP keep-alive), which saves
+  the connection setup per frame and raises the frame rate during motion
 - Cameras with a sensor show a motion badge in the grid (pulsing red while motion is detected,
   otherwise today's number of motion events), and the calendar shows the number of motion
   events per day. A motion event is a run of consecutive motion images
@@ -167,7 +165,6 @@ http://192.168.2.38:5000
 - Click any thumbnail to display that image
 - **← / →**: previous / next image
 - **M / Shift+M**: jump to the next / previous motion event (cameras with a motion sensor)
-- **P**: play / close the motion clip of the selected event
 - Press **ESC** or click **×** to close
 
 ## File Structure
@@ -197,7 +194,6 @@ ESP/
 - `GET /latest` - Latest image from any camera
 - `GET /latest/<camera_id>` - Latest from specific camera
 - `GET /uploads/<camera_id>/<filename>` - Specific image file
-- `GET /clip/<camera_id>/<date>/<name>` - Motion clip (MP4)
 
 ### Stats & Lists
 - `GET /stats` - Statistics per camera (JSON)

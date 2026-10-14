@@ -20,7 +20,7 @@ const int CAMERA_QUALITY = 12;
 #endif
 const bool HAS_MOTION_SENSOR = MOTION_PIN >= 0;
 // Minimum gap between uploads while motion is detected; in practice the upload time limits the
-// rate to a few frames per second. The hub turns these frames into a motion clip.
+// rate to a few frames per second, all of which appear in the hub's timeline.
 const unsigned long MOTION_FRAME_INTERVAL_MS = 250;
 const unsigned long MOTION_WARMUP_MS = 60000;    // PIR output is unreliable right after power-up
 
@@ -207,6 +207,10 @@ void uploadTask(void * parameter){
   int uploadFailures = 0;
   int captureFailures = 0;
   unsigned long lastUpload = 0;
+  // Kept across uploads so the connection to the hub is reused (keep-alive): saves the TCP
+  // handshake per frame, which matters during motion bursts. It reconnects by itself if closed.
+  HTTPClient http;
+  http.setReuse(true);
   esp_task_wdt_add(NULL);
 
   while(true){
@@ -234,7 +238,6 @@ void uploadTask(void * parameter){
     }
     captureFailures = 0;
 
-    HTTPClient http;
     http.begin(serverUrl);
     http.addHeader("Content-Type", "image/jpeg");
     http.addHeader("X-RSSI", String(WiFi.RSSI()));

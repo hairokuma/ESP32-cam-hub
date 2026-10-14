@@ -193,26 +193,7 @@ dialog::backdrop { background: var(--bg); }
   overflow: hidden;
 }
 
-.stage img,
-.stage video { max-width: 100%; max-height: 100%; object-fit: contain; }
-
-.stage img[hidden] { display: none; }
-
-.btn-play-clip {
-  position: absolute;
-  bottom: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  padding: 0.5rem 1rem;
-  font-size: 0.85rem;
-  background: var(--motion);
-  border-color: var(--motion);
-}
-
-.btn-play-clip:hover { background: #c33; border-color: #c33; }
-
-.btn-play-clip[hidden] { display: none; }
+.stage img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
 /* ── Timeline ───────────────────────────────────────────── */
 
@@ -239,7 +220,6 @@ dialog::backdrop { background: var(--bg); }
 .timeline::-webkit-scrollbar { display: none; }
 
 .timeline-item {
-  position: relative;
   flex-shrink: 0;
   cursor: pointer;
   overflow: hidden;
@@ -269,17 +249,6 @@ dialog::backdrop { background: var(--bg); }
 }
 
 .timeline-item.motion .timestamp { color: var(--motion); }
-
-.timeline-item.has-clip::after {
-  content: '▶';
-  position: absolute;
-  top: 0.2rem;
-  left: 0.2rem;
-  padding: 0.05rem 0.3rem;
-  font-size: 0.6rem;
-  background: var(--motion);
-  color: #fff;
-}
 
 .timeline-item.selected .timestamp { background: #222; color: var(--fg); }
 
@@ -459,22 +428,6 @@ dialog::backdrop { background: var(--bg); }
 #videoDialog video { max-width: 90vw; max-height: 78dvh; }
 
 #videoDialog footer { display: flex; gap: 2rem; font-size: 0.75rem; color: #555; }
-
-.clip-list {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.4rem;
-  max-width: 90vw;
-}
-
-.clip-list[hidden] { display: none; }
-
-.clip-list button { color: #888; }
-
-.clip-list button.motion { color: var(--motion); }
-
-.clip-list button[data-active="true"] { background: var(--hover); border-color: var(--muted); color: var(--fg); }
 
 .frame-controls {
   display: none;
